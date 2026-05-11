@@ -1,0 +1,88 @@
+{% extends "layouts/admin.html" %}
+
+{% block content %}
+
+<h2 class="text-2xl font-bold mb-4">Riwayat Analisis Sentimen</h2>
+
+<!-- 🔷 STATISTIK -->
+<div class="grid grid-cols-2 gap-4 mb-6">
+
+    <div class="bg-green-100 p-4 rounded-lg text-center shadow">
+        <p class="text-lg font-semibold">Positif</p>
+        <p class="text-2xl font-bold text-green-600">{{ stats[0] }}</p>
+    </div>
+
+    <div class="bg-red-100 p-4 rounded-lg text-center shadow">
+        <p class="text-lg font-semibold">Negatif</p>
+        <p class="text-2xl font-bold text-red-600">{{ stats[1] }}</p>
+    </div>
+
+</div>
+
+<!-- 🔷 TABEL -->
+<div class="bg-white rounded-xl shadow overflow-x-auto">
+
+<table class="w-full text-sm text-left border-collapse">
+
+    <thead class="bg-gray-200">
+        <tr>
+            <th class="p-3">ID</th>
+            <th class="p-3">Teks</th>
+            <th class="p-3">Hasil</th>
+            <th class="p-3">Waktu</th>
+            <th class="p-3 text-center">Aksi</th>
+        </tr>
+    </thead>
+
+    <tbody>
+        {% for row in data %}
+        <tr class="border-b hover:bg-gray-50">
+
+            <td class="p-3">{{ row[0] }}</td>
+
+            <td class="p-3 max-w-xs truncate">
+                {{ row[1] }}
+            </td>
+
+            <!-- 🔥 SENTIMEN -->
+            <td class="p-3">
+                {% if row[2] == 'Positif' %}
+                    <span class="px-2 py-1 bg-green-200 text-green-700 rounded font-semibold">
+                        {{ row[2] }}
+                    </span>
+                {% elif row[2] == 'Negatif' %}
+                    <span class="px-2 py-1 bg-red-200 text-red-700 rounded font-semibold">
+                        {{ row[2] }}
+                    </span>
+                {% else %}
+                    {{ row[2] }}
+                {% endif %}
+            </td>
+
+            <td class="p-3 text-gray-600">
+                {{ row[3] }}
+            </td>
+
+            <!-- 🔥 AKSI -->
+            <td class="p-3 text-center">
+                <a href="/hapus/{{ row[0] }}"
+                   onclick="return confirm('Yakin hapus data ini?')"
+                   class="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600">
+                   Hapus
+                </a>
+            </td>
+
+        </tr>
+        {% endfor %}
+    </tbody>
+
+</table>
+
+</div>
+
+<!-- 🔷 BACK -->
+<div class="mt-4">
+    <a href="/" class="text-blue-500 hover:underline">⬅ Kembali ke Analisis</a>
+</div>
+
+{% endblock %}

@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Admin Panel</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100">
+
+<div class="flex">
+
+    <!-- 🔷 SIDEBAR -->
+    <div class="w-64 bg-gray-800 text-white min-h-screen p-5">
+        <h2 class="text-xl font-bold mb-6">Admin Panel</h2>
+
+        <ul class="space-y-3">
+            <li><a href="/dashboard" class="hover:text-gray-300">Dashboard</a></li>
+            <li><a href="/riwayat" class="hover:text-gray-300">Riwayat</a></li>
+            <li><a href="/" class="hover:text-gray-300">Analisis</a></li>
+            <li><a href="/logout" class="text-red-400 hover:text-red-300">Logout</a></li>
+        </ul>
+    </div>
+
+    <!-- 🔷 CONTENT -->
+    <div class="flex-1 p-6">
+        {% block content %}{% endblock %}
+    </div>
+
+</div>
+
+</body>
+</html>

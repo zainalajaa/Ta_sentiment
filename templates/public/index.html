@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Analisis Sentimen Edlink</title>
+
+    <!-- TailwindCSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Google Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <style>
+
+        *{
+            margin:0;
+            padding:0;
+            box-sizing:border-box;
+        }
+
+        body{
+            font-family:'Poppins', sans-serif;
+            overflow-x:hidden;
+            background:#0f172a;
+        }
+
+        /* BACKGROUND */
+        .hero{
+            min-height:100vh;
+            background:
+                linear-gradient(to right,
+                rgba(15,23,42,0.92),
+                rgba(15,23,42,0.75)),
+                url('https://images.unsplash.com/photo-1522202176988-66273c2fd55f?q=80&w=2071&auto=format&fit=crop');
+            background-size:cover;
+            background-position:center;
+            position:relative;
+        }
+
+        /* GLOW */
+        .glow{
+            box-shadow:
+                0 10px 30px rgba(0,0,0,0.3),
+                0 0 30px rgba(59,130,246,0.2);
+        }
+
+        /* GLASS */
+        .glass{
+            background:rgba(255,255,255,0.08);
+            backdrop-filter:blur(16px);
+            border:1px solid rgba(255,255,255,0.1);
+        }
+
+        /* FLOATING EFFECT */
+        .floating{
+            animation:floating 4s ease-in-out infinite;
+        }
+
+        @keyframes floating{
+            0%{
+                transform:translateY(0px);
+            }
+            50%{
+                transform:translateY(-10px);
+            }
+            100%{
+                transform:translateY(0px);
+            }
+        }
+
+    </style>
+</head>
+
+<body>
+
+    <!-- HERO -->
+    <section class="hero relative">
+
+        <!-- NAVBAR -->
+        <nav class="absolute top-0 left-0 w-full z-50">
+
+            <div class="max-w-7xl mx-auto px-6 py-5 flex items-center justify-between">
+
+                <!-- LOGO -->
+                <div class="flex items-center gap-3">
+
+                    <div class="w-11 h-11 rounded-xl bg-blue-500 flex items-center justify-center text-white font-bold text-xl shadow-lg">
+                        E
+                    </div>
+
+                    <div>
+                        <h1 class="text-white text-2xl font-bold">
+                            Edlink AI
+                        </h1>
+
+                        <p class="text-blue-200 text-xs tracking-widest uppercase">
+                            Sentiment Analysis
+                        </p>
+                    </div>
+
+                </div>
+
+                <!-- MENU -->
+                <div class="hidden md:flex items-center gap-8 text-sm text-gray-200">
+
+                    <a href="#" class="hover:text-blue-400 transition duration-300">
+                        Home
+                    </a>
+
+                    <a href="#" class="hover:text-blue-400 transition duration-300">
+                        Tentang
+                    </a>
+
+                    <a href="#" class="hover:text-blue-400 transition duration-300">
+                        Dataset
+                    </a>
+
+                    <a href="#" class="hover:text-blue-400 transition duration-300">
+                        Akurasi
+                    </a>
+
+                    {% if role == 'admin' %}
+
+                        <a href="/dashboard" class="hover:text-blue-400 transition duration-300">
+                            Dashboard
+                        </a>
+
+                        <a href="/riwayat" class="hover:text-blue-400 transition duration-300">
+                            Riwayat
+                        </a>
+
+                        <a href="/logout" class="text-red-400 hover:text-red-300 transition duration-300">
+                            Logout
+                        </a>
+
+                    {% else %}
+
+                        <a href="/login" class="bg-blue-500 hover:bg-blue-600 px-5 py-2 rounded-xl transition duration-300">
+                            Login Admin
+                        </a>
+
+                    {% endif %}
+
+                </div>
+
+            </div>
+
+        </nav>
+
+        <!-- CONTENT -->
+        <div class="max-w-7xl mx-auto min-h-screen px-6 flex items-center">
+
+            <div class="grid lg:grid-cols-2 gap-14 items-center w-full">
+
+                <!-- LEFT -->
+                <div class="text-white">
+
+                    <p class="uppercase tracking-[7px] text-blue-300 text-sm mb-5">
+                        Sistem Cerdas Analisis Sentimen
+                    </p>
+
+                    <h1 class="text-5xl md:text-7xl font-extrabold leading-tight mb-6">
+
+                        Analisis
+                        <span class="text-blue-400">
+                            Ulasan
+                        </span>
+                        Pengguna
+                        <span class="text-cyan-300">
+                            Edlink
+                        </span>
+
+                    </h1>
+
+                    <p class="text-gray-300 text-lg leading-relaxed mb-8 max-w-xl">
+
+                        Sistem ini menggunakan metode 
+                        <span class="text-blue-300 font-semibold">
+                            Naïve Bayes Classifier
+                        </span>
+                        untuk mengidentifikasi sentimen positif dan negatif 
+                        dari ulasan pengguna aplikasi Edlink secara otomatis 
+                        berdasarkan data Google Play Store.
+
+                    </p>
+
+                    <!-- STATS -->
+                    <div class="flex flex-wrap gap-5">
+
+                        <div class="glass px-6 py-5 rounded-2xl w-40">
+
+                            <h2 class="text-3xl font-bold text-blue-300">
+                                95%
+                            </h2>
+
+                            <p class="text-sm text-gray-300 mt-1">
+                                Tingkat Akurasi
+                            </p>
+
+                        </div>
+
+                        <div class="glass px-6 py-5 rounded-2xl w-40">
+
+                            <h2 class="text-3xl font-bold text-cyan-300">
+                                NBC
+                            </h2>
+
+                            <p class="text-sm text-gray-300 mt-1">
+                                Naïve Bayes
+                            </p>
+
+                        </div>
+
+                        <div class="glass px-6 py-5 rounded-2xl w-40">
+
+                            <h2 class="text-3xl font-bold text-green-300">
+                                2
+                            </h2>
+
+                            <p class="text-sm text-gray-300 mt-1">
+                                Kategori Sentimen
+                            </p>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+                <!-- RIGHT -->
+                <div class="relative floating">
+
+                    <!-- CARD -->
+                    <div class="glass glow rounded-[35px] p-8 text-white">
+
+                        <!-- TOP -->
+                        <div class="flex items-center gap-4 mb-6">
+
+                            <div class="w-14 h-14 rounded-2xl bg-blue-500 flex items-center justify-center text-2xl shadow-lg">
+                                💬
+                            </div>
+
+                            <div>
+
+                                <h2 class="text-3xl font-bold">
+                                    Analisis Sentimen
+                                </h2>
+
+                                <p class="text-gray-300 text-sm">
+                                    Input ulasan pengguna Edlink
+                                </p>
+
+                            </div>
+
+                        </div>
+
+                        <!-- FORM -->
+                        <form method="POST">
+
+                            <label class="block mb-3 text-sm text-gray-300">
+                                Masukkan Ulasan
+                            </label>
+
+                            <textarea
+                                name="text"
+                                rows="6"
+                                placeholder="Contoh: Fitur Edlink sangat membantu proses pembelajaran online mahasiswa..."
+                                class="w-full bg-white/10 border border-white/10 rounded-2xl p-5 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none"
+                            >{{ text }}</textarea>
+
+                            <button
+                                class="w-full mt-6 bg-gradient-to-r from-blue-500 to-cyan-400 hover:scale-[1.02] transition duration-300 text-white py-4 rounded-2xl font-semibold text-lg shadow-lg">
+
+                                Analisis Sekarang
+
+                            </button>
+
+                        </form>
+
+                        <!-- RESULT -->
+                        {% if result %}
+
+                        <div class="mt-8 border-t border-white/10 pt-6">
+
+                            <h3 class="text-xl font-semibold mb-5">
+                                Hasil Prediksi Sentimen
+                            </h3>
+
+                            {% if result == 'Positif' %}
+
+                                <div class="bg-green-500/15 border border-green-400/30 rounded-2xl p-5 text-center">
+
+                                    <div class="text-5xl mb-3">
+                                        😊
+                                    </div>
+
+                                    <h2 class="text-3xl font-bold text-green-300">
+                                        {{ result }}
+                                    </h2>
+
+                                    <p class="text-green-100 mt-2">
+                                        Ulasan menunjukkan respon positif terhadap aplikasi Edlink
+                                    </p>
+
+                                </div>
+
+                            {% elif result == 'Negatif' %}
+
+                                <div class="bg-red-500/15 border border-red-400/30 rounded-2xl p-5 text-center">
+
+                                    <div class="text-5xl mb-3">
+                                        😞
+                                    </div>
+
+                                    <h2 class="text-3xl font-bold text-red-300">
+                                        {{ result }}
+                                    </h2>
+
+                                    <p class="text-red-100 mt-2">
+                                        Ulasan menunjukkan respon negatif terhadap aplikasi Edlink
+                                    </p>
+
+                                </div>
+
+                            {% endif %}
+
+                            <!-- PROBABILITAS -->
+                            {% if scores %}
+
+                            <div class="mt-6 glass rounded-2xl p-5">
+
+                                <h4 class="font-semibold mb-5">
+                                    Nilai Probabilitas
+                                </h4>
+
+                                <!-- POSITIF -->
+                                <div class="mb-5">
+
+                                    <div class="flex justify-between mb-2 text-sm">
+
+                                        <span class="text-green-300">
+                                            Positif
+                                        </span>
+
+                                        <span>
+                                            {{ scores.get('Positif', 0) }}
+                                        </span>
+
+                                    </div>
+
+                                    <div class="w-full h-3 bg-white/10 rounded-full overflow-hidden">
+
+                                        <div class="h-full bg-green-400 rounded-full w-[85%]"></div>
+
+                                    </div>
+
+                                </div>
+
+                                <!-- NEGATIF -->
+                                <div>
+
+                                    <div class="flex justify-between mb-2 text-sm">
+
+                                        <span class="text-red-300">
+                                            Negatif
+                                        </span>
+
+                                        <span>
+                                            {{ scores.get('Negatif', 0) }}
+                                        </span>
+
+                                    </div>
+
+                                    <div class="w-full h-3 bg-white/10 rounded-full overflow-hidden">
+
+                                        <div class="h-full bg-red-400 rounded-full w-[45%]"></div>
+
+                                    </div>
+
+                                </div>
+
+                            </div>
+
+                            {% endif %}
+
+                        </div>
+
+                        {% endif %}
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </section>
+
+</body>
+</html>
