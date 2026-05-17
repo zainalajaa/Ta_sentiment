@@ -1,31 +1,85 @@
+<!-- templates/layout/main.html -->
+
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Panel</title>
+
+    <!-- TAILWIND -->
     <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- FONT AWESOME -->
+    <link rel="stylesheet"
+          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"/>
 </head>
+
 <body class="bg-gray-100">
 
-<div class="flex">
+<div class="flex min-h-screen">
 
-    <!-- 🔷 SIDEBAR -->
-    <div class="w-64 bg-gray-800 text-white min-h-screen p-5">
-        <h2 class="text-xl font-bold mb-6">Admin Panel</h2>
+    <!-- SIDEBAR -->
+    {% include 'components/sidebar.html' %}
 
-        <ul class="space-y-3">
-            <li><a href="/dashboard" class="hover:text-gray-300">Dashboard</a></li>
-            <li><a href="/riwayat" class="hover:text-gray-300">Riwayat</a></li>
-            <li><a href="/" class="hover:text-gray-300">Analisis</a></li>
-            <li><a href="/logout" class="text-red-400 hover:text-red-300">Logout</a></li>
-        </ul>
-    </div>
+    <!-- MAIN CONTENT -->
+    <main id="mainContent"
+        class="flex-1 flex flex-col transition-all duration-300">
 
-    <!-- 🔷 CONTENT -->
-    <div class="flex-1 p-6">
-        {% block content %}{% endblock %}
-    </div>
+        {% include 'components/navbar.html' %}
 
+        <div class="p-8 overflow-y-auto">
+
+            <div class="bg-white rounded-3xl shadow-lg p-8">
+
+                {% block content %}
+                {% endblock %}
+
+            </div>
+
+        </div>
+
+    </main>
 </div>
+
+<!-- OVERLAY -->
+<div id="overlay"
+     class="fixed inset-0 bg-black/50 z-40 hidden lg:hidden"
+     onclick="toggleSidebar()">
+</div>
+
+<!-- SCRIPT -->
+<script>
+
+    let sidebarOpen = true;
+
+    function toggleSidebar() {
+
+        const sidebar = document.getElementById('sidebar');
+        const mainContent = document.getElementById('mainContent');
+
+        if (sidebarOpen) {
+
+            // SIDEBAR HILANG
+            sidebar.classList.remove('w-72');
+            sidebar.classList.add('w-0', 'overflow-hidden');
+
+            // CONTENT FULL
+            mainContent.classList.remove('ml-72');
+            mainContent.classList.add('w-full');
+
+        } else {
+
+            // SIDEBAR MUNCUL
+            sidebar.classList.remove('w-0', 'overflow-hidden');
+            sidebar.classList.add('w-72');
+
+        }
+
+        sidebarOpen = !sidebarOpen;
+    }
+
+</script>
 
 </body>
 </html>

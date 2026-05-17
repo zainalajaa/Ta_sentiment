@@ -101,7 +101,6 @@
                     </div>
 
                 </div>
-
                 <!-- MENU -->
                 <div class="hidden md:flex items-center gap-8 text-sm text-gray-200">
 
@@ -121,24 +120,42 @@
                         Akurasi
                     </a>
 
-                    {% if role == 'admin' %}
+                    <!-- JIKA SUDAH LOGIN -->
+                    {% if role %}
 
-                        <a href="/dashboard" class="hover:text-blue-400 transition duration-300">
-                            Dashboard
-                        </a>
+                        <!-- ADMIN -->
+                        {% if role == 'admin' %}
 
-                        <a href="/riwayat" class="hover:text-blue-400 transition duration-300">
-                            Riwayat
-                        </a>
+                            <a href="/dashboard" class="hover:text-blue-400 transition duration-300">
+                                Dashboard
+                            </a>
+
+                            <a href="/result" class="hover:text-blue-400 transition duration-300">
+                                Riwayat
+                            </a>
+
+                        <!-- USER -->
+                        {% else %}
+
+                            <a href="/preprocessing" class="hover:text-blue-400 transition duration-300">
+                                Preprocessing
+                            </a>
+
+                            <a href="/result" class="hover:text-blue-400 transition duration-300">
+                                Hasil
+                            </a>
+
+                        {% endif %}
 
                         <a href="/logout" class="text-red-400 hover:text-red-300 transition duration-300">
                             Logout
                         </a>
 
+                    <!-- BELUM LOGIN -->
                     {% else %}
 
                         <a href="/login" class="bg-blue-500 hover:bg-blue-600 px-5 py-2 rounded-xl transition duration-300">
-                            Login Admin
+                            Login
                         </a>
 
                     {% endif %}

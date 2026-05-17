@@ -1,0 +1,150 @@
+<!-- templates/components/sidebar.html -->
+
+<aside id="sidebar"
+       class="w-72 min-h-screen bg-gradient-to-b
+       from-gray-950 via-gray-900 to-black
+       text-white shadow-2xl
+       transition-all duration-300 flex flex-col">
+
+    <!-- LOGO -->
+    <div class="p-6 border-b border-gray-800">
+
+        <h1 class="text-3xl font-extrabold text-emerald-400 tracking-wide">
+            Admin Panel
+        </h1>
+
+        <p class="text-sm text-gray-400 mt-2">
+            Sentiment Analysis System
+        </p>
+
+    </div>
+
+    <!-- MENU -->
+    <nav class="flex-1 p-4 space-y-3 overflow-y-auto">
+
+        <!-- DASHBOARD -->
+        <a href="/dashboard"
+           class="flex items-center gap-4 px-4 py-3 rounded-2xl
+           transition-all duration-300
+
+           {% if request.path == '/dashboard' %}
+           bg-emerald-500 shadow-lg shadow-emerald-500/20
+           {% else %}
+           hover:bg-gray-800
+           {% endif %}
+           ">
+
+            <div class="w-11 h-11 rounded-xl bg-white/10
+                        flex items-center justify-center">
+
+                <i class="fa-solid fa-chart-line text-emerald-300"></i>
+
+            </div>
+
+            <span class="font-semibold">
+                Dashboard
+            </span>
+
+        </a>
+
+        <!-- USERS -->
+        <a href="/users"
+           class="flex items-center gap-4 px-4 py-3 rounded-2xl
+           transition-all duration-300
+
+           {% if request.path.startswith('/users') %}
+           bg-emerald-500 shadow-lg shadow-emerald-500/20
+           {% else %}
+           hover:bg-gray-800
+           {% endif %}
+           ">
+
+            <div class="w-11 h-11 rounded-xl bg-white/10
+                        flex items-center justify-center">
+
+                <i class="fa-solid fa-users text-sky-300"></i>
+
+            </div>
+
+            <span class="font-semibold">
+                Manajemen User
+            </span>
+
+        </a>
+
+        <!-- PREPROCESSING -->
+        <a href="/preprocessing"
+           class="flex items-center gap-4 px-4 py-3 rounded-2xl
+           transition-all duration-300
+
+           {% if request.path.startswith('/preprocessing') %}
+           bg-emerald-500 shadow-lg shadow-emerald-500/20
+           {% else %}
+           hover:bg-gray-800
+           {% endif %}
+           ">
+
+            <div class="w-11 h-11 rounded-xl bg-white/10
+                        flex items-center justify-center">
+
+                <i class="fa-solid fa-sliders text-violet-300"></i>
+
+            </div>
+
+            <span class="font-semibold">
+                Data Preprocessing
+            </span>
+
+        </a>
+
+        <!-- RESULT -->
+        <a href="/result"
+           class="flex items-center gap-4 px-4 py-3 rounded-2xl
+           transition-all duration-300
+
+           {% if request.path.startswith('/result') %}
+           bg-emerald-500 shadow-lg shadow-emerald-500/20
+           {% else %}
+           hover:bg-gray-800
+           {% endif %}
+           ">
+
+            <div class="w-11 h-11 rounded-xl bg-white/10
+                        flex items-center justify-center">
+
+                <i class="fa-solid fa-brain text-pink-300"></i>
+
+            </div>
+
+            <span class="font-semibold">
+                Hasil Klasifikasi
+            </span>
+
+        </a>
+
+    </nav>
+
+    <!-- LOGOUT -->
+    <div class="p-4 border-t border-gray-800">
+
+        <a href="/logout"
+           class="flex items-center gap-4 px-4 py-3 rounded-2xl
+           text-red-400 hover:bg-red-500/10
+           transition-all duration-300">
+
+            <div class="w-11 h-11 rounded-xl bg-red-500/10
+                        flex items-center justify-center">
+
+                <i class="fa-solid fa-right-from-bracket"></i>
+
+            </div>
+
+            <span class="font-semibold">
+                Logout
+            </span>
+
+        </a>
+
+    </div>
+
+</aside>
