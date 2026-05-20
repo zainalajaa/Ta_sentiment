@@ -1,0 +1,903 @@
+{% extends 'layouts/admin.html' %}
+
+{% block content %}
+
+<!-- HEADER -->
+<div class="flex items-center justify-between mb-8">
+
+    <div>
+
+        <h1 class="text-3xl font-bold text-gray-800">
+            Manajemen User
+        </h1>
+
+        <p class="text-gray-500 mt-2">
+            Kelola seluruh user sistem
+        </p>
+
+    </div>
+
+    <!-- BUTTON ADD -->
+    <button
+        type="button"
+        onclick="openModal('addModal')"
+        class="
+            inline-flex items-center gap-2
+            px-5 py-3 rounded-2xl
+            bg-emerald-500 hover:bg-emerald-600
+            text-white font-semibold
+            shadow-lg shadow-emerald-500/30
+            hover:scale-[1.02]
+            active:scale-[0.98]
+            transition-all duration-300
+        "
+    >
+
+        <i class="fa-solid fa-plus"></i>
+
+        <span>
+            Tambah User
+        </span>
+
+    </button>
+
+</div>
+
+<!-- TABLE -->
+<div class="bg-white rounded-3xl shadow-lg overflow-hidden">
+
+    <div class="overflow-x-auto">
+
+        <table class="w-full min-w-[800px]">
+
+            <!-- HEAD -->
+            <thead class="bg-gray-100">
+
+                <tr>
+
+                    <th class="px-6 py-4 text-left">
+                        No
+                    </th>
+
+                    <th class="px-6 py-4 text-left">
+                        Username
+                    </th>
+
+                    <th class="px-6 py-4 text-left">
+                        Email
+                    </th>
+
+                    <th class="px-6 py-4 text-left">
+                        Role
+                    </th>
+
+                    <th class="px-6 py-4 text-center">
+                        Aksi
+                    </th>
+
+                </tr>
+
+            </thead>
+
+            <!-- BODY -->
+            <tbody>
+
+                {% for user in data %}
+
+                <tr class="border-b hover:bg-gray-50 transition-all duration-300">
+
+                    <!-- NO -->
+                    <td class="px-6 py-5">
+                        {{ loop.index }}
+                    </td>
+
+                    <!-- USERNAME -->
+                    <td class="px-6 py-5">
+
+                        <div class="flex items-center gap-3">
+
+                            <!-- AVATAR -->
+                            <div class="
+                                w-11 h-11 rounded-2xl
+                                flex items-center justify-center
+                                font-bold text-sm
+
+                                {% if user[3] == 'admin' %}
+                                bg-blue-100 text-blue-600
+                                {% else %}
+                                bg-emerald-100 text-emerald-600
+                                {% endif %}
+                            ">
+
+                                {{ user[1][0]|upper }}
+
+                            </div>
+
+                            <div>
+
+                                <h3 class="font-semibold text-gray-800">
+                                    {{ user[1] }}
+                                </h3>
+
+                                <p class="text-sm text-gray-500">
+                                    Pengguna Sistem
+                                </p>
+
+                            </div>
+
+                        </div>
+
+                    </td>
+
+                    <!-- EMAIL -->
+                    <td class="px-6 py-5 text-gray-600">
+                        {{ user[2] }}
+                    </td>
+
+                    <!-- ROLE -->
+                    <td class="px-6 py-5">
+
+                        {% if user[3] == 'admin' %}
+
+                        <span class="
+                            inline-flex items-center gap-2
+                            px-4 py-2 rounded-xl
+                            bg-blue-100 text-blue-600
+                            text-xs font-semibold
+                        ">
+
+                            <i class="fa-solid fa-shield-halved"></i>
+                            Admin
+
+                        </span>
+
+                        {% else %}
+
+                        <span class="
+                            inline-flex items-center gap-2
+                            px-4 py-2 rounded-xl
+                            bg-emerald-100 text-emerald-600
+                            text-xs font-semibold
+                        ">
+
+                            <i class="fa-solid fa-user"></i>
+                            User
+
+                        </span>
+
+                        {% endif %}
+
+                    </td>
+
+                    <!-- ACTION -->
+                    <td class="px-6 py-5">
+
+                        <div class="flex items-center justify-center gap-3">
+
+                            <!-- DETAIL -->
+                            <button
+                                type="button"
+                                onclick="openModal('detailModal{{ user[0] }}')"
+                                class="
+                                    px-4 py-2 rounded-xl
+                                    bg-gray-100 hover:bg-gray-200
+                                    text-gray-700 text-sm font-semibold
+                                    transition-all duration-300
+                                "
+                            >
+
+                                Detail
+
+                            </button>
+
+                            <!-- EDIT -->
+                            <button
+                                type="button"
+                                onclick="openModal('editModal{{ user[0] }}')"
+                                class="
+                                    px-4 py-2 rounded-xl
+                                    bg-yellow-100 hover:bg-yellow-200
+                                    text-yellow-700 text-sm font-semibold
+                                    transition-all duration-300
+                                "
+                            >
+
+                                Edit
+
+                            </button>
+
+                            <!-- DELETE -->
+                            {% if user[3] != 'admin' %}
+
+                            <button
+                                type="button"
+
+                                onclick="
+                                    openDeleteModal(
+                                        '{{ user[0] }}'
+                                    )
+                                "
+
+                                class="
+                                    px-4 py-2 rounded-xl
+                                    bg-red-100 hover:bg-red-200
+                                    text-red-600 text-sm font-semibold
+                                    transition-all duration-300
+                                "
+                            >
+
+                                Hapus
+
+                            </button>
+
+                            {% endif %}
+
+                        </div>
+
+                    </td>
+
+                </tr>
+
+                {% endfor %}
+
+            </tbody>
+
+        </table>
+
+    </div>
+
+</div>
+
+<!-- OVERLAY -->
+<div
+    id="modalOverlay"
+    class="
+        fixed inset-0 z-40
+        bg-black/30
+        backdrop-blur-[4px]
+
+        opacity-0 invisible
+
+        transition-all duration-300
+    "
+></div>
+
+<!-- ========================= -->
+<!-- MODAL ADD USER -->
+<!-- ========================= -->
+
+<div
+    id="addModal"
+    class="
+        fixed inset-0 z-50
+        flex items-center justify-center
+        p-5
+
+        opacity-0 invisible
+
+        transition-all duration-300 ease-out
+    "
+>
+
+    <div
+        id="addModalContent"
+        class="
+            w-full max-w-2xl
+            bg-white rounded-3xl
+            shadow-2xl
+            p-8
+
+            scale-95 opacity-0
+
+            transition-all duration-300 ease-out
+        "
+    >
+
+        <div class="flex items-center justify-between mb-8">
+
+            <div>
+
+                <h2 class="text-3xl font-bold text-gray-800">
+                    Tambah User
+                </h2>
+
+                <p class="text-gray-500 mt-2">
+                    Tambahkan pengguna baru sistem
+                </p>
+
+            </div>
+
+            <button
+                type="button"
+                onclick="closeModal('addModal')"
+                class="
+                    w-11 h-11 rounded-2xl
+                    bg-gray-100 hover:bg-gray-200
+                "
+            >
+
+                <i class="fa-solid fa-xmark"></i>
+
+            </button>
+
+        </div>
+
+        <form
+            action="/users/add"
+            method="POST"
+            class="space-y-5"
+        >
+
+            <input
+                type="text"
+                name="username"
+                placeholder="Username"
+                required
+
+                class="
+                    w-full px-5 py-4
+                    rounded-2xl border border-gray-200
+
+                    focus:outline-none
+                    focus:ring-2
+                    focus:ring-emerald-500
+
+                    transition-all duration-300
+                "
+            >
+
+            <input
+                type="email"
+                name="email"
+                placeholder="Email"
+                required
+
+                class="
+                    w-full px-5 py-4
+                    rounded-2xl border border-gray-200
+
+                    focus:outline-none
+                    focus:ring-2
+                    focus:ring-emerald-500
+
+                    transition-all duration-300
+                "
+            >
+
+            <input
+                type="password"
+                name="password"
+                placeholder="Password"
+                required
+
+                class="
+                    w-full px-5 py-4
+                    rounded-2xl border border-gray-200
+
+                    focus:outline-none
+                    focus:ring-2
+                    focus:ring-emerald-500
+
+                    transition-all duration-300
+                "
+            >
+
+            <select
+                name="role"
+
+                class="
+                    w-full px-5 py-4
+                    rounded-2xl border border-gray-200
+
+                    focus:outline-none
+                    focus:ring-2
+                    focus:ring-emerald-500
+
+                    transition-all duration-300
+                "
+            >
+
+                <option value="user">
+                    User
+                </option>
+
+                <option value="admin">
+                    Admin
+                </option>
+
+            </select>
+
+            <button
+                type="submit"
+
+                class="
+                    w-full py-4 rounded-2xl
+                    bg-emerald-500 hover:bg-emerald-600
+                    text-white font-semibold
+                    transition-all duration-300
+                "
+            >
+
+                Simpan User
+
+            </button>
+
+        </form>
+
+    </div>
+
+</div>
+
+<!-- ========================= -->
+<!-- DETAIL & EDIT MODAL -->
+<!-- ========================= -->
+
+{% for user in data %}
+
+<!-- DETAIL -->
+<div
+    id="detailModal{{ user[0] }}"
+    class="
+        fixed inset-0 z-50
+
+        flex items-center justify-center
+
+        p-5
+
+        opacity-0 invisible
+
+        transition-all duration-300 ease-out
+    "
+>
+
+    <div
+        id="detailModal{{ user[0] }}Content"
+        class="
+            w-full max-w-xl
+
+            bg-white rounded-3xl
+            shadow-2xl
+
+            p-8
+
+            scale-95 opacity-0
+
+            transition-all duration-300 ease-out
+        "
+    >
+
+        <div class="flex items-center justify-between mb-8">
+
+            <h2 class="text-3xl font-bold text-gray-800">
+                Detail User
+            </h2>
+
+            <button
+                type="button"
+                onclick="closeModal('detailModal{{ user[0] }}')"
+                class="
+                    w-11 h-11 rounded-2xl
+                    bg-gray-100 hover:bg-gray-200
+                "
+            >
+
+                <i class="fa-solid fa-xmark"></i>
+
+            </button>
+
+        </div>
+
+        <div class="space-y-5">
+
+            <div>
+
+                <p class="text-sm text-gray-500">
+                    Username
+                </p>
+
+                <h3 class="text-xl font-bold text-gray-800">
+                    {{ user[1] }}
+                </h3>
+
+            </div>
+
+            <div>
+
+                <p class="text-sm text-gray-500">
+                    Email
+                </p>
+
+                <h3 class="text-xl font-bold text-gray-800">
+                    {{ user[2] }}
+                </h3>
+
+            </div>
+
+            <div>
+
+                <p class="text-sm text-gray-500">
+                    Role
+                </p>
+
+                <h3 class="text-xl font-bold text-gray-800">
+                    {{ user[3] }}
+                </h3>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+<!-- EDIT -->
+<div
+    id="editModal{{ user[0] }}"
+    class="
+        fixed inset-0 z-50
+
+        flex items-center justify-center
+
+        p-5
+
+        opacity-0 invisible
+
+        transition-all duration-300 ease-out
+    "
+>
+
+    <div
+        id="editModal{{ user[0] }}Content"
+        class="
+            w-full max-w-2xl
+
+            bg-white rounded-3xl
+            shadow-2xl
+
+            p-8
+
+            scale-95 opacity-0
+
+            transition-all duration-300 ease-out
+        "
+    >
+
+        <div class="flex items-center justify-between mb-8">
+
+            <h2 class="text-3xl font-bold text-gray-800">
+                Edit User
+            </h2>
+
+            <button
+                type="button"
+                onclick="closeModal('editModal{{ user[0] }}')"
+                class="
+                    w-11 h-11 rounded-2xl
+                    bg-gray-100 hover:bg-gray-200
+                "
+            >
+
+                <i class="fa-solid fa-xmark"></i>
+
+            </button>
+
+        </div>
+
+        <form
+            action="/users/edit/{{ user[0] }}"
+            method="POST"
+            class="space-y-5"
+        >
+
+            <input
+                type="text"
+                name="username"
+                value="{{ user[1] }}"
+                required
+
+                class="
+                    w-full px-5 py-4
+                    rounded-2xl border border-gray-200
+
+                    focus:outline-none
+                    focus:ring-2
+                    focus:ring-yellow-500
+
+                    transition-all duration-300
+                "
+            >
+
+            <input
+                type="email"
+                name="email"
+                value="{{ user[2] }}"
+                required
+
+                class="
+                    w-full px-5 py-4
+                    rounded-2xl border border-gray-200
+
+                    focus:outline-none
+                    focus:ring-2
+                    focus:ring-yellow-500
+
+                    transition-all duration-300
+                "
+            >
+
+            <select
+                name="role"
+
+                class="
+                    w-full px-5 py-4
+                    rounded-2xl border border-gray-200
+
+                    focus:outline-none
+                    focus:ring-2
+                    focus:ring-yellow-500
+
+                    transition-all duration-300
+                "
+            >
+
+                <option
+                    value="user"
+                    {% if user[3] == 'user' %}selected{% endif %}
+                >
+                    User
+                </option>
+
+                <option
+                    value="admin"
+                    {% if user[3] == 'admin' %}selected{% endif %}
+                >
+                    Admin
+                </option>
+
+            </select>
+
+            <button
+                type="submit"
+
+                class="
+                    w-full py-4 rounded-2xl
+                    bg-yellow-500 hover:bg-yellow-600
+                    text-white font-semibold
+                    transition-all duration-300
+                "
+            >
+
+                Update User
+
+            </button>
+
+        </form>
+
+    </div>
+
+</div>
+
+{% endfor %}
+
+<!-- FLASH TOAST -->
+{% with messages = get_flashed_messages(with_categories=true) %}
+
+    {% if messages %}
+
+        {% for category, message in messages %}
+
+        <script>
+
+            document.addEventListener(
+                'DOMContentLoaded',
+                function ()
+                {
+                    showToast(
+                        'Berhasil',
+                        '{{ message }}'
+                    );
+                }
+            );
+
+        </script>
+
+        {% endfor %}
+
+    {% endif %}
+
+{% endwith %}
+
+<!-- TOAST -->
+<div
+    id="toast"
+    class="
+        fixed top-5 right-5 z-[999]
+
+        translate-x-[150%]
+
+        transition-all duration-500 ease-out
+    "
+>
+
+    <div class="
+        flex items-center gap-4
+
+        bg-white
+        shadow-2xl
+
+        border border-gray-100
+
+        rounded-2xl
+
+        px-5 py-4
+
+        min-w-[320px]
+    ">
+
+        <!-- ICON -->
+        <div class="
+            w-12 h-12 rounded-2xl
+
+            bg-emerald-100
+            text-emerald-600
+
+            flex items-center justify-center
+        ">
+
+            <i class="fa-solid fa-check text-xl"></i>
+
+        </div>
+
+        <!-- CONTENT -->
+        <div>
+
+            <h3
+                id="toastTitle"
+                class="font-bold text-gray-800"
+            >
+                Berhasil
+            </h3>
+
+            <p
+                id="toastMessage"
+                class="text-sm text-gray-500 mt-1"
+            >
+                Data berhasil disimpan
+            </p>
+
+        </div>
+
+    </div>
+
+</div>
+
+<!-- DELETE MODAL -->
+<div
+    id="deleteModal"
+    class="
+        fixed inset-0 z-[999]
+
+        flex items-center justify-center
+
+        p-5
+
+        opacity-0 invisible
+
+        transition-all duration-300
+    "
+>
+
+    <!-- CARD -->
+    <div
+        id="deleteModalContent"
+        class="
+            w-full max-w-md
+
+            bg-white rounded-3xl
+            shadow-2xl
+
+            p-8
+
+            scale-95 opacity-0
+
+            transition-all duration-300
+        "
+    >
+
+        <!-- ICON -->
+        <div class="flex justify-center mb-5">
+
+            <div class="
+                w-20 h-20 rounded-full
+
+                bg-red-100
+                text-red-600
+
+                flex items-center justify-center
+            ">
+
+                <i class="fa-solid fa-trash text-3xl"></i>
+
+            </div>
+
+        </div>
+
+        <!-- TITLE -->
+        <h2 class="
+            text-2xl font-bold
+            text-center text-gray-800
+        ">
+
+            Hapus User
+
+        </h2>
+
+        <!-- DESC -->
+        <p class="
+            text-gray-500 text-center
+            mt-3 leading-relaxed
+        ">
+
+            Apakah kamu yakin ingin menghapus user ini?
+
+        </p>
+
+        <!-- BUTTON -->
+        <div class="
+            flex items-center gap-3
+            mt-8
+        ">
+
+            <!-- CANCEL -->
+            <button
+                type="button"
+                onclick="closeModal('deleteModal')"
+
+                class="
+                    flex-1 py-4 rounded-2xl
+
+                    bg-gray-100 hover:bg-gray-200
+
+                    text-gray-700 font-semibold
+
+                    transition-all duration-300
+                "
+            >
+
+                Batal
+
+            </button>
+
+            <!-- DELETE -->
+            <button
+                type="button"
+                id="deleteButton"
+
+                class="
+                    flex-1 py-4 rounded-2xl
+
+                    bg-red-500 hover:bg-red-600
+
+                    text-center
+                    text-white font-semibold
+
+                    transition-all duration-300
+                "
+            >
+
+                Hapus
+
+            </button>
+
+        </div>
+
+    </div>
+
+</div>
+
+<script
+    src="{{ url_for('static', filename='js/users.js') }}"
+></script>
+
+{% endblock %}

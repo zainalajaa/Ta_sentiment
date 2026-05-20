@@ -1,5 +1,5 @@
 import math
-from model.model_data import priors, total_words, word_counts, vocab_size
+from ml.model_data import priors, total_words, word_counts, vocab_size
 
 def calculate_likelihood(word, label):
     count = word_counts[label].get(word, 0)

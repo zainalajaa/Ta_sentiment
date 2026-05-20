@@ -1,0 +1,62 @@
+{% extends 'layouts/admin.html' %}
+
+{% block content %}
+
+<div class="bg-white p-8 rounded-3xl shadow-lg max-w-2xl">
+
+    <h1 class="text-3xl font-bold mb-8">
+        Edit User
+    </h1>
+
+    <form method="POST" class="space-y-5">
+
+        <div>
+            <label class="font-semibold">Username</label>
+            <input
+                type="text"
+                name="username"
+                value="{{ user[1] }}"
+                class="w-full mt-2 border rounded-xl px-4 py-3"
+                required
+            >
+        </div>
+
+        <div>
+            <label class="font-semibold">Email</label>
+            <input
+                type="email"
+                name="email"
+                value="{{ user[2] }}"
+                class="w-full mt-2 border rounded-xl px-4 py-3"
+                required
+            >
+        </div>
+
+        <div>
+            <label class="font-semibold">Role</label>
+
+            <select
+                name="role"
+                class="w-full mt-2 border rounded-xl px-4 py-3"
+            >
+                <option value="user" {% if user[3] == 'user' %}selected{% endif %}>
+                    User
+                </option>
+
+                <option value="admin" {% if user[3] == 'admin' %}selected{% endif %}>
+                    Admin
+                </option>
+            </select>
+        </div>
+
+        <button
+            class="px-5 py-3 rounded-xl bg-yellow-500 hover:bg-yellow-600 text-white font-semibold"
+        >
+            Update User
+        </button>
+
+    </form>
+
+</div>
+
+{% endblock %}

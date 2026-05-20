@@ -37,3 +37,5 @@ def preprocess_text(text):
     tokens = [stemmer.stem(w) for w in tokens]
 
     return tokens
+
+

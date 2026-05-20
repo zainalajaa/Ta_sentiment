@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, session, redirect
+from flask import Flask, render_template, request, session, redirect, flash
 from functools import wraps
 
 from werkzeug.security import (
@@ -6,13 +6,12 @@ from werkzeug.security import (
     check_password_hash
 )
 
-from model.preprocessing import preprocess_text
-from model.naive_bayes import predict
-from model.database import get_connection
+from ml.preprocessing import preprocess_text
+from ml.naive_bayes import predict
+from ml.database import get_connection
 
 app = Flask(__name__)
 app.secret_key = "secret123"
-
 
 # =====================================================
 # DECORATOR LOGIN
@@ -27,7 +26,6 @@ def login_required(f):
         return f(*args, **kwargs)
 
     return decorated_function
-
 
 # =====================================================
 # DECORATOR ADMIN
@@ -357,9 +355,204 @@ def users():
     conn.close()
 
     return render_template(
-        "admin/users.html",
+        "admin/users/users.html",
         data=data
     )
+
+
+# =====================================================
+# TAMBAH USER
+# =====================================================
+@app.route("/users/add", methods=["GET", "POST"])
+@admin_required
+def add_user():
+
+    if request.method == "POST":
+
+        username = request.form["username"]
+        email = request.form["email"]
+        password = request.form["password"]
+        role = request.form["role"]
+
+        conn = get_connection()
+        cursor = conn.cursor()
+
+        # cek email
+        cursor.execute(
+            "SELECT id FROM users WHERE email=%s",
+            (email,)
+        )
+
+        check_email = cursor.fetchone()
+
+        if check_email:
+
+            cursor.close()
+            conn.close()
+
+            return render_template(
+                "admin/users/add_user.html",
+                error="Email sudah digunakan"
+            )
+
+        hashed_password = generate_password_hash(password)
+
+        query = """
+        INSERT INTO users
+        (username, email, password, role)
+        VALUES (%s, %s, %s, %s)
+        """
+
+        cursor.execute(query, (
+            username,
+            email,
+            hashed_password,
+            role
+        ))
+
+        conn.commit()
+
+        cursor.close()
+        conn.close()
+
+        flash('User berhasil ditambahkan', 'success')
+        return redirect("/users")
+
+    return render_template(
+        "admin/users/add_user.html"
+    )
+
+
+# =====================================================
+# EDIT USER
+# =====================================================
+@app.route("/users/edit/<int:id>", methods=["GET", "POST"])
+@admin_required
+def edit_user(id):
+
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        "SELECT id, username, email, role FROM users WHERE id=%s",
+        (id,)
+    )
+
+    user = cursor.fetchone()
+
+    if not user:
+
+        cursor.close()
+        conn.close()
+
+        return redirect("/users")
+
+    if request.method == "POST":
+
+        username = request.form["username"]
+        email = request.form["email"]
+        role = request.form["role"]
+
+        query = """
+        UPDATE users
+        SET username=%s,
+            email=%s,
+            role=%s
+        WHERE id=%s
+        """
+
+        cursor.execute(query, (
+            username,
+            email,
+            role,
+            id
+        ))
+
+        conn.commit()
+
+        cursor.close()
+        conn.close()
+
+        flash('User berhasil diupdate', 'success')
+
+        return redirect("/users")
+
+    cursor.close()
+    conn.close()
+
+    return render_template(
+        "admin/users/edit_user.html",
+        user=user
+    )
+
+
+# =====================================================
+# DETAIL USER
+# =====================================================
+@app.route("/users/detail/<int:id>")
+@admin_required
+def detail_user(id):
+
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        "SELECT id, username, email, role FROM users WHERE id=%s",
+        (id,)
+    )
+
+    user = cursor.fetchone()
+
+    cursor.close()
+    conn.close()
+
+    if not user:
+        return redirect("/users")
+
+    return render_template(
+        "admin/users/detail_user.html",
+        user=user
+    )
+
+
+# =====================================================
+# HAPUS USER
+# =====================================================
+@app.route("/users/delete/<int:id>")
+@admin_required
+def delete_user(id):
+
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    # cek role
+    cursor.execute(
+        "SELECT role FROM users WHERE id=%s",
+        (id,)
+    )
+
+    user = cursor.fetchone()
+
+    # admin tidak bisa dihapus
+    if user and user[0] == "admin":
+
+        cursor.close()
+        conn.close()
+
+        return redirect("/users")
+
+    cursor.execute(
+        "DELETE FROM users WHERE id=%s",
+        (id,)
+    )
+
+    conn.commit()
+
+    cursor.close()
+    conn.close()
+
+    flash('User berhasil dihapus', 'success')
+    return redirect("/users")
 
 
 # =====================================================

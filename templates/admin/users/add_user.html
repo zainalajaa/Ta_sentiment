@@ -1,0 +1,55 @@
+{% extends 'layouts/admin.html' %}
+
+{% block content %}
+
+<div class="bg-white p-8 rounded-3xl shadow-lg max-w-2xl">
+
+    <h1 class="text-3xl font-bold mb-8">
+        Tambah User
+    </h1>
+
+    <form method="POST" class="space-y-5">
+
+        <div>
+            <label class="font-semibold">Username</label>
+            <input
+                type="text"
+                name="username"
+                class="w-full mt-2 border rounded-xl px-4 py-3"
+                required
+            >
+        </div>
+
+        <div>
+            <label class="font-semibold">Email</label>
+            <input
+                type="email"
+                name="email"
+                class="w-full mt-2 border rounded-xl px-4 py-3"
+                required
+            >
+        </div>
+
+        <div>
+            <label class="font-semibold">Role</label>
+
+            <select
+                name="role"
+                class="w-full mt-2 border rounded-xl px-4 py-3"
+            >
+                <option value="user">User</option>
+                <option value="admin">Admin</option>
+            </select>
+        </div>
+
+        <button
+            class="px-5 py-3 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-semibold"
+        >
+            Simpan User
+        </button>
+
+    </form>
+
+</div>
+
+{% endblock %}
