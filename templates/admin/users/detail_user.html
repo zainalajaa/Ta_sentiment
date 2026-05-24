@@ -5,25 +5,36 @@
 <div class="bg-white p-8 rounded-3xl shadow-lg max-w-2xl">
 
     <!-- HEADER -->
-    <div class="flex items-center justify-between mb-8">
+    <div class="mb-8 text-center">
 
-        <div>
-
-            <h1 class="text-3xl font-bold text-gray-800">
-                Detail User
-            </h1>
-
-            <p class="text-gray-500 mt-2">
-                Informasi lengkap pengguna sistem
-            </p>
-
-        </div>
 
         <!-- AVATAR -->
+<div class="flex justify-center mb-5">
+
+    {% if user[4] and user[4] != '' %}
+
+        <img
+            src="{{ url_for('static', filename='uploads/users/' ~ user[4]) }}"
+            alt="Foto Profil"
+
+            class="
+                w-28 h-28
+                rounded-full
+                object-cover
+                border-4 border-gray-100
+                shadow-lg
+            "
+        >
+
+    {% else %}
+
         <div class="
-            w-20 h-20 rounded-3xl
+            w-28 h-28
+            rounded-full
+
             flex items-center justify-center
-            text-3xl font-bold shadow-md
+
+            text-4xl font-bold
 
             {% if user[3] == 'admin' %}
             bg-blue-100 text-blue-600
@@ -35,6 +46,17 @@
             {{ user[1][0]|upper }}
 
         </div>
+
+    {% endif %}
+
+</div>
+        <h1 class="text-3xl font-bold text-gray-800">
+            Detail User
+        </h1>
+
+        <p class="text-gray-500 mt-2">
+            Informasi lengkap pengguna sistem
+        </p>
 
     </div>
 
@@ -125,7 +147,7 @@
 
         <!-- BACK -->
         <a
-            href="/admin/users"
+            href="/users"
             class="
                 inline-flex items-center gap-2
                 px-5 py-3 rounded-2xl
@@ -142,7 +164,7 @@
 
         <!-- EDIT -->
         <a
-            href="/admin/users/edit/{{ user[0] }}"
+            href="/users/edit/{{ user[0] }}"
             class="
                 inline-flex items-center gap-2
                 px-5 py-3 rounded-2xl

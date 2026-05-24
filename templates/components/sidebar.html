@@ -20,107 +20,249 @@
     </div>
 
     <!-- MENU -->
-    <nav class="flex-1 p-4 space-y-3 overflow-y-auto">
+    <nav class="flex-1 p-4 overflow-y-auto">
 
-        <!-- DASHBOARD -->
-        <a href="/dashboard"
-           class="flex items-center gap-4 px-4 py-3 rounded-2xl
-           transition-all duration-300
+        <!-- MAIN MENU -->
+        <div class="mb-6">
 
-           {% if request.path == '/dashboard' %}
-           bg-emerald-500 shadow-lg shadow-emerald-500/20
-           {% else %}
-           hover:bg-gray-800
-           {% endif %}
-           ">
+            <p class="text-xs uppercase tracking-widest
+                      text-gray-500 px-3 mb-3">
+                Main Menu
+            </p>
 
-            <div class="w-11 h-11 rounded-xl bg-white/10
-                        flex items-center justify-center">
+            <div class="space-y-3">
 
-                <i class="fa-solid fa-chart-line text-emerald-300"></i>
+                <!-- DASHBOARD -->
+                <a href="/dashboard"
+                   class="flex items-center gap-4 px-4 py-3 rounded-2xl
+                   transition-all duration-300
+
+                   {% if request.path == '/dashboard' %}
+                   bg-emerald-500 shadow-lg shadow-emerald-500/20
+                   {% else %}
+                   hover:bg-gray-800
+                   {% endif %}
+                   ">
+
+                    <div class="w-11 h-11 rounded-xl bg-white/10
+                                flex items-center justify-center">
+
+                        <i class="fa-solid fa-chart-line text-emerald-300"></i>
+
+                    </div>
+
+                    <span class="font-semibold">
+                        Dashboard
+                    </span>
+
+                </a>
+
+                <!-- USERS -->
+                <a href="/users"
+                   class="flex items-center gap-4 px-4 py-3 rounded-2xl
+                   transition-all duration-300
+
+                   {% if request.path.startswith('/users') %}
+                   bg-emerald-500 shadow-lg shadow-emerald-500/20
+                   {% else %}
+                   hover:bg-gray-800
+                   {% endif %}
+                   ">
+
+                    <div class="w-11 h-11 rounded-xl bg-white/10
+                                flex items-center justify-center">
+
+                        <i class="fa-solid fa-users text-sky-300"></i>
+
+                    </div>
+
+                    <span class="font-semibold">
+                        Manajemen User
+                    </span>
+
+                </a>
 
             </div>
 
-            <span class="font-semibold">
-                Dashboard
-            </span>
-
-        </a>
-
-        <!-- USERS -->
-        <a href="/users"
-           class="flex items-center gap-4 px-4 py-3 rounded-2xl
-           transition-all duration-300
-
-           {% if request.path.startswith('/users') %}
-           bg-emerald-500 shadow-lg shadow-emerald-500/20
-           {% else %}
-           hover:bg-gray-800
-           {% endif %}
-           ">
-
-            <div class="w-11 h-11 rounded-xl bg-white/10
-                        flex items-center justify-center">
-
-                <i class="fa-solid fa-users text-sky-300"></i>
-
-            </div>
-
-            <span class="font-semibold">
-                Manajemen User
-            </span>
-
-        </a>
+        </div>
 
         <!-- PREPROCESSING -->
-        <a href="/preprocessing"
-           class="flex items-center gap-4 px-4 py-3 rounded-2xl
-           transition-all duration-300
+        <div class="mb-6">
 
-           {% if request.path.startswith('/preprocessing') %}
-           bg-emerald-500 shadow-lg shadow-emerald-500/20
-           {% else %}
-           hover:bg-gray-800
-           {% endif %}
-           ">
+            <p class="text-xs uppercase tracking-widest
+                      text-gray-500 px-3 mb-3">
+                Preprocessing
+            </p>
 
-            <div class="w-11 h-11 rounded-xl bg-white/10
-                        flex items-center justify-center">
+            <div class="space-y-3">
 
-                <i class="fa-solid fa-sliders text-violet-300"></i>
+                <!-- PREPROCESSING -->
+                <a href="/preprocessing"
+                   class="flex items-center gap-4 px-4 py-3 rounded-2xl
+                   transition-all duration-300
+
+                   {% if request.path == '/preprocessing' %}
+                   bg-emerald-500 shadow-lg shadow-emerald-500/20
+                   {% else %}
+                   hover:bg-gray-800
+                   {% endif %}
+                   ">
+
+                    <div class="w-11 h-11 rounded-xl bg-white/10
+                                flex items-center justify-center">
+
+                        <i class="fa-solid fa-sliders text-violet-300"></i>
+
+                    </div>
+
+                    <span class="font-semibold">
+                        Data Preprocessing
+                    </span>
+
+                </a>
+
+                <!-- SPLIT DATASET -->
+                <a href="/preprocessing/split-data"
+                   class="flex items-center gap-4 px-4 py-3 rounded-2xl
+                   transition-all duration-300
+
+                   {% if request.path.startswith('/preprocessing/split-data') %}
+                   bg-emerald-500 shadow-lg shadow-emerald-500/20
+                   {% else %}
+                   hover:bg-gray-800
+                   {% endif %}
+                   ">
+
+                    <div class="w-11 h-11 rounded-xl bg-white/10
+                                flex items-center justify-center">
+
+                        <i class="fa-solid fa-code-branch text-orange-300"></i>
+
+                    </div>
+
+                    <span class="font-semibold">
+                        Split Dataset
+                    </span>
+
+                </a>
 
             </div>
 
-            <span class="font-semibold">
-                Data Preprocessing
-            </span>
+        </div>
 
-        </a>
+        <!-- CLASSIFICATION -->
+        <div>
 
-        <!-- RESULT -->
-        <a href="/result"
-           class="flex items-center gap-4 px-4 py-3 rounded-2xl
-           transition-all duration-300
+            <p class="text-xs uppercase tracking-widest
+                      text-gray-500 px-3 mb-3">
+                Classification
+            </p>
 
-           {% if request.path.startswith('/result') %}
-           bg-emerald-500 shadow-lg shadow-emerald-500/20
-           {% else %}
-           hover:bg-gray-800
-           {% endif %}
-           ">
+            <div class="space-y-3">
 
-            <div class="w-11 h-11 rounded-xl bg-white/10
-                        flex items-center justify-center">
+                <!-- TFIDF -->
+                <a href="/classification/tfidf"
+                   class="flex items-center gap-4 px-4 py-3 rounded-2xl
+                   transition-all duration-300
 
-                <i class="fa-solid fa-brain text-pink-300"></i>
+                   {% if request.path.startswith('/classification/tfidf') %}
+                   bg-emerald-500 shadow-lg shadow-emerald-500/20
+                   {% else %}
+                   hover:bg-gray-800
+                   {% endif %}
+                   ">
+
+                    <div class="w-11 h-11 rounded-xl bg-white/10
+                                flex items-center justify-center">
+
+                        <i class="fa-solid fa-table text-cyan-300"></i>
+
+                    </div>
+
+                    <span class="font-semibold">
+                        TF-IDF
+                    </span>
+
+                </a>
+
+                <!-- PREDICTION -->
+                <a href="/classification/prediction"
+                   class="flex items-center gap-4 px-4 py-3 rounded-2xl
+                   transition-all duration-300
+
+                   {% if request.path.startswith('/classification/prediction') %}
+                   bg-emerald-500 shadow-lg shadow-emerald-500/20
+                   {% else %}
+                   hover:bg-gray-800
+                   {% endif %}
+                   ">
+
+                    <div class="w-11 h-11 rounded-xl bg-white/10
+                                flex items-center justify-center">
+
+                        <i class="fa-solid fa-brain text-pink-300"></i>
+
+                    </div>
+
+                    <span class="font-semibold">
+                        Prediction NBC
+                    </span>
+
+                </a>
+
+                <!-- EVALUATION -->
+                <a href="/classification/evaluation"
+                   class="flex items-center gap-4 px-4 py-3 rounded-2xl
+                   transition-all duration-300
+
+                   {% if request.path.startswith('/classification/evaluation') %}
+                   bg-emerald-500 shadow-lg shadow-emerald-500/20
+                   {% else %}
+                   hover:bg-gray-800
+                   {% endif %}
+                   ">
+
+                    <div class="w-11 h-11 rounded-xl bg-white/10
+                                flex items-center justify-center">
+
+                        <i class="fa-solid fa-chart-column text-yellow-300"></i>
+
+                    </div>
+
+                    <span class="font-semibold">
+                        Evaluation
+                    </span>
+
+                </a>
+
+                <!-- CONFUSION MATRIX -->
+                <a href="/classification/confusion-matrix"
+                   class="flex items-center gap-4 px-4 py-3 rounded-2xl
+                   transition-all duration-300
+
+                   {% if request.path.startswith('/classification/confusion-matrix') %}
+                   bg-emerald-500 shadow-lg shadow-emerald-500/20
+                   {% else %}
+                   hover:bg-gray-800
+                   {% endif %}
+                   ">
+
+                    <div class="w-11 h-11 rounded-xl bg-white/10
+                                flex items-center justify-center">
+
+                        <i class="fa-solid fa-table-cells text-red-300"></i>
+
+                    </div>
+
+                    <span class="font-semibold">
+                        Confusion Matrix
+                    </span>
+
+                </a>
 
             </div>
 
-            <span class="font-semibold">
-                Hasil Klasifikasi
-            </span>
-
-        </a>
+        </div>
 
     </nav>
 

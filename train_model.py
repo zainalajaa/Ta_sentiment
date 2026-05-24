@@ -1,6 +1,6 @@
 import pandas as pd
 from collections import Counter
-from model.preprocessing import preprocess_text
+from ml.preprocessing import preprocess_text
 
 df = pd.read_csv("data/dataset.csv")
 

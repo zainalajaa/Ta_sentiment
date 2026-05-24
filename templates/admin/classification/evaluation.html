@@ -1,0 +1,57 @@
+{% extends 'layouts/admin.html' %}
+
+{% block content %}
+
+<div class="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+
+    <div class="bg-white rounded-3xl shadow-lg p-6">
+
+        <h2 class="text-gray-500 mb-2">
+            Accuracy
+        </h2>
+
+        <h1 class="text-4xl font-bold text-blue-600">
+            {{ accuracy }}%
+        </h1>
+
+    </div>
+
+    <div class="bg-white rounded-3xl shadow-lg p-6">
+
+        <h2 class="text-gray-500 mb-2">
+            Precision
+        </h2>
+
+        <h1 class="text-4xl font-bold text-emerald-600">
+            {{ precision }}%
+        </h1>
+
+    </div>
+
+    <div class="bg-white rounded-3xl shadow-lg p-6">
+
+        <h2 class="text-gray-500 mb-2">
+            Recall
+        </h2>
+
+        <h1 class="text-4xl font-bold text-orange-600">
+            {{ recall }}%
+        </h1>
+
+    </div>
+
+    <div class="bg-white rounded-3xl shadow-lg p-6">
+
+        <h2 class="text-gray-500 mb-2">
+            F1-Score
+        </h2>
+
+        <h1 class="text-4xl font-bold text-purple-600">
+            {{ f1_score }}%
+        </h1>
+
+    </div>
+
+</div>
+
+{% endblock %}

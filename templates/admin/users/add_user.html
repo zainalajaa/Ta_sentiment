@@ -4,49 +4,110 @@
 
 <div class="bg-white p-8 rounded-3xl shadow-lg max-w-2xl">
 
-    <h1 class="text-3xl font-bold mb-8">
-        Tambah User
-    </h1>
+    <div class="mb-8">
+        <h1 class="text-3xl font-bold text-gray-800">
+            Tambah User
+        </h1>
 
-    <form method="POST" class="space-y-5">
+        <p class="text-gray-500 mt-2">
+            Tambahkan data user baru ke sistem
+        </p>
+    </div>
 
+    <form
+        method="POST"
+        enctype="multipart/form-data"
+        class="space-y-5"
+    >
+
+        <!-- Username -->
         <div>
-            <label class="font-semibold">Username</label>
+            <label class="font-semibold text-gray-700">
+                Username
+            </label>
+
             <input
                 type="text"
                 name="username"
-                class="w-full mt-2 border rounded-xl px-4 py-3"
+                placeholder="Masukkan username"
+                class="w-full mt-2 border rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 required
             >
         </div>
 
+        <!-- Email -->
         <div>
-            <label class="font-semibold">Email</label>
+            <label class="font-semibold text-gray-700">
+                Email
+            </label>
+
             <input
                 type="email"
                 name="email"
-                class="w-full mt-2 border rounded-xl px-4 py-3"
+                placeholder="Masukkan email"
+                class="w-full mt-2 border rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 required
             >
         </div>
 
+        <!-- Password -->
         <div>
-            <label class="font-semibold">Role</label>
+            <label class="font-semibold text-gray-700">
+                Password
+            </label>
+
+            <input
+                type="password"
+                name="password"
+                placeholder="Masukkan password"
+                class="w-full mt-2 border rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                required
+            >
+        </div>
+
+        <!-- Foto Profil -->
+        <div>
+            <label class="font-semibold text-gray-700">
+                Foto Profil
+            </label>
+
+            <input
+                type="file"
+                name="photo"
+                accept="image/*"
+                class="w-full mt-2 border rounded-xl px-4 py-3"
+            >
+        </div>
+
+        <!-- Role -->
+        <div>
+            <label class="font-semibold text-gray-700">
+                Role
+            </label>
 
             <select
                 name="role"
-                class="w-full mt-2 border rounded-xl px-4 py-3"
+                class="w-full mt-2 border rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500"
             >
-                <option value="user">User</option>
-                <option value="admin">Admin</option>
+                <option value="user">
+                    User
+                </option>
+
+                <option value="admin">
+                    Admin
+                </option>
             </select>
         </div>
 
-        <button
-            class="px-5 py-3 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-semibold"
-        >
-            Simpan User
-        </button>
+        <!-- Button -->
+        <div class="pt-3">
+            <button
+                type="submit"
+                class="px-6 py-3 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-semibold transition"
+            >
+                Simpan User
+            </button>
+        </div>
 
     </form>
 

@@ -3,34 +3,92 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
     <title>Admin Panel</title>
 
     <!-- TAILWIND -->
     <script src="https://cdn.tailwindcss.com"></script>
 
     <!-- FONT AWESOME -->
-    <link rel="stylesheet"
-          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"/>
+    <link
+        rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+    />
+
+    <!-- FIX OVERFLOW -->
+    <style>
+
+        html,
+        body {
+            overflow-x: hidden;
+        }
+
+    </style>
+
 </head>
 
-<body class="bg-gray-100">
+<body class="bg-gray-100 overflow-x-hidden">
 
-<div class="flex min-h-screen">
+<!-- WRAPPER -->
+<div class="
+    flex
+    min-h-screen
+    overflow-x-hidden
+">
 
     <!-- SIDEBAR -->
     {% include 'components/sidebar.html' %}
 
     <!-- MAIN CONTENT -->
-    <main id="mainContent"
-        class="flex-1 flex flex-col transition-all duration-300">
+    <main
+        id="mainContent"
 
+        class="
+            flex-1
+            flex
+            flex-col
+
+            transition-all duration-300
+
+            overflow-x-hidden
+            max-w-full
+        "
+    >
+
+        <!-- NAVBAR -->
         {% include 'components/navbar.html' %}
 
-        <div class="p-8 overflow-y-auto">
+        <!-- PAGE CONTENT -->
+        <div class="
+            p-4 sm:p-6 lg:p-8
 
-            <div class="bg-white rounded-3xl shadow-lg p-8">
+            overflow-y-auto
+            overflow-x-hidden
+
+            w-full
+            max-w-full
+        ">
+
+            <!-- CARD CONTENT -->
+            <div class="
+                bg-white
+                rounded-3xl
+                shadow-lg
+
+                p-4 sm:p-6 lg:p-8
+
+                w-full
+                max-w-full
+
+                overflow-hidden
+            ">
 
                 {% block content %}
                 {% endblock %}
@@ -40,12 +98,23 @@
         </div>
 
     </main>
+
 </div>
 
 <!-- OVERLAY -->
-<div id="overlay"
-     class="fixed inset-0 bg-black/50 z-40 hidden lg:hidden"
-     onclick="toggleSidebar()">
+<div
+    id="overlay"
+
+    class="
+        fixed inset-0
+        bg-black/50
+        z-40
+        hidden
+        lg:hidden
+    "
+
+    onclick="toggleSidebar()"
+>
 </div>
 
 <!-- SCRIPT -->
@@ -55,23 +124,35 @@
 
     function toggleSidebar() {
 
-        const sidebar = document.getElementById('sidebar');
-        const mainContent = document.getElementById('mainContent');
+        const sidebar =
+            document.getElementById('sidebar');
+
+        const mainContent =
+            document.getElementById('mainContent');
 
         if (sidebarOpen) {
 
-            // SIDEBAR HILANG
+            // SIDEBAR HIDE
             sidebar.classList.remove('w-72');
-            sidebar.classList.add('w-0', 'overflow-hidden');
+
+            sidebar.classList.add(
+                'w-0',
+                'overflow-hidden'
+            );
 
             // CONTENT FULL
             mainContent.classList.remove('ml-72');
+
             mainContent.classList.add('w-full');
 
         } else {
 
-            // SIDEBAR MUNCUL
-            sidebar.classList.remove('w-0', 'overflow-hidden');
+            // SIDEBAR SHOW
+            sidebar.classList.remove(
+                'w-0',
+                'overflow-hidden'
+            );
+
             sidebar.classList.add('w-72');
 
         }

@@ -1,0 +1,684 @@
+{% extends 'layouts/admin.html' %}
+
+{% block content %}
+
+<!-- ===================================== -->
+<!-- PAGE HEADER -->
+<!-- ===================================== -->
+
+<div class="
+    flex flex-col lg:flex-row
+    lg:items-center lg:justify-between
+    gap-5 mb-8
+">
+
+    <div>
+
+        <h1 class="text-3xl font-bold text-gray-800">
+            Data Preprocessing
+        </h1>
+
+        <p class="text-gray-500 mt-2">
+            Kelola dataset preprocessing analisis sentimen aplikasi Edlink
+        </p>
+
+    </div>
+
+    <!-- TOTAL DATA -->
+    <div class="
+        inline-flex items-center gap-3
+        px-5 py-4 rounded-2xl
+        bg-white shadow-lg
+    ">
+
+        <div class="
+            w-14 h-14 rounded-2xl
+            bg-emerald-100 text-emerald-600
+            flex items-center justify-center
+            text-2xl
+        ">
+
+            <i class="fa-solid fa-database"></i>
+
+        </div>
+
+        <div>
+
+            <h3 class="text-2xl font-bold text-gray-800">
+                {{ total_data }}
+            </h3>
+
+            <p class="text-sm text-gray-500">
+                Total Dataset
+            </p>
+
+        </div>
+
+    </div>
+
+</div>
+
+<!-- ===================================== -->
+<!-- ACTION CARD -->
+<!-- ===================================== -->
+
+<div class="
+    grid
+    grid-cols-1
+    md:grid-cols-2
+    xl:grid-cols-4
+    gap-6
+    mb-8
+">
+
+    <!-- IMPORT -->
+    <div class="
+        bg-white rounded-3xl shadow-lg
+        p-6
+        flex flex-col
+        justify-between
+        min-h-[240px]
+    ">
+
+        <!-- TOP -->
+        <div>
+
+            <div class="
+                w-16 h-16 rounded-2xl
+                bg-emerald-100 text-emerald-600
+
+                flex items-center justify-center
+
+                text-2xl mb-5
+            ">
+
+                <i class="fa-solid fa-file-import"></i>
+
+            </div>
+
+            <h3 class="text-xl font-bold text-gray-800">
+                Import Dataset
+            </h3>
+
+            <p class="text-sm text-gray-500 mt-2">
+                Upload dataset analisis sentimen format CSV atau Excel
+            </p>
+
+        </div>
+
+        <!-- FORM -->
+        <form
+            action="/preprocessing/import"
+            method="POST"
+            enctype="multipart/form-data"
+            class="mt-6 space-y-4"
+        >
+
+            <input
+                type="file"
+                name="file"
+                required
+
+                class="
+                    w-full
+                    text-sm
+
+                    border border-gray-200
+                    rounded-2xl
+
+                    px-4 py-3
+
+                    focus:outline-none
+                    focus:ring-2
+                    focus:ring-emerald-500
+                "
+            >
+
+            <button
+                type="submit"
+
+                class="
+                    w-full
+
+                    py-3 rounded-2xl
+
+                    bg-emerald-500 hover:bg-emerald-600
+
+                    text-white font-semibold
+
+                    transition-all duration-300
+                "
+            >
+
+                Import Data
+
+            </button>
+
+        </form>
+
+    </div>
+
+    <!-- NLP PROCESS -->
+    <div class="
+        bg-white rounded-3xl shadow-lg
+        p-6
+        flex flex-col justify-between
+        min-h-[240px]
+    ">
+
+        <div>
+
+            <div class="
+                w-16 h-16 rounded-2xl
+                bg-purple-100 text-purple-600
+
+                flex items-center justify-center
+
+                text-2xl mb-5
+            ">
+
+                <i class="fa-solid fa-brain"></i>
+
+            </div>
+
+            <h3 class="text-xl font-bold text-gray-800">
+                NLP Process
+            </h3>
+
+            <p class="text-sm text-gray-500 mt-2">
+                Case folding, cleaning, tokenizing,
+                normalisasi, stopword, dan stemming
+            </p>
+
+        </div>
+
+        <a
+            id="processButton"
+            href="/preprocessing/process"
+
+            class="
+                mt-6
+
+                block text-center
+
+                py-3 rounded-2xl
+
+                bg-purple-500 hover:bg-purple-600
+
+                text-white font-semibold
+
+                transition-all duration-300
+            "
+        >
+
+            Mulai Process
+
+        </a>
+
+    </div>
+
+    <!-- SPLIT -->
+    <div class="
+        bg-white rounded-3xl shadow-lg
+        p-6
+        flex flex-col justify-between
+        min-h-[240px]
+    ">
+
+        <div>
+
+            <div class="
+                w-16 h-16 rounded-2xl
+                bg-blue-100 text-blue-600
+
+                flex items-center justify-center
+
+                text-2xl mb-5
+            ">
+
+                <i class="fa-solid fa-code-branch"></i>
+
+            </div>
+
+            <h3 class="text-xl font-bold text-gray-800">
+                Split Dataset
+            </h3>
+
+            <p class="text-sm text-gray-500 mt-2">
+                Membagi dataset train dan test
+                untuk klasifikasi Naïve Bayes
+            </p>
+
+        </div>
+
+        <a
+            href="/preprocessing/split-data"
+
+            class="
+                mt-6
+
+                block text-center
+
+                py-3 rounded-2xl
+
+                bg-blue-500 hover:bg-blue-600
+
+                text-white font-semibold
+
+                transition-all duration-300
+            "
+        >
+
+            Split Dataset
+
+        </a>
+
+    </div>
+
+    <!-- DELETE -->
+    <div class="
+        bg-white rounded-3xl shadow-lg
+        p-6
+        flex flex-col justify-between
+        min-h-[240px]
+    ">
+
+        <div>
+
+            <div class="
+                w-16 h-16 rounded-2xl
+                bg-red-100 text-red-600
+
+                flex items-center justify-center
+
+                text-2xl mb-5
+            ">
+
+                <i class="fa-solid fa-trash"></i>
+
+            </div>
+
+            <h3 class="text-xl font-bold text-gray-800">
+                Hapus Dataset
+            </h3>
+
+            <p class="text-sm text-gray-500 mt-2">
+                Menghapus seluruh data preprocessing
+                dari sistem
+            </p>
+
+        </div>
+
+        <a
+            href="/preprocessing/delete-all"
+
+            class="
+                mt-6
+
+                block text-center
+
+                py-3 rounded-2xl
+
+                bg-red-500 hover:bg-red-600
+
+                text-white font-semibold
+
+                transition-all duration-300
+            "
+        >
+
+            Hapus Semua
+
+        </a>
+
+    </div>
+
+</div><!-- ===================================== -->
+<!-- TABLE -->
+<!-- ===================================== -->
+
+<div class="
+    bg-white rounded-3xl shadow-lg
+
+    w-full
+    max-w-full
+
+    overflow-hidden
+">
+
+    <!-- INTERNAL TABLE AREA -->
+    <div class="
+        w-full
+        max-w-full
+        overflow-hidden
+    ">
+
+        <!-- HORIZONTAL SCROLL -->
+        <div class="
+            w-full
+            max-w-full
+
+            overflow-x-auto
+            overflow-y-hidden
+
+            custom-scrollbar
+        ">
+
+            <!-- VERTICAL SCROLL -->
+            <div class="
+                max-h-[650px]
+                overflow-y-auto
+            ">
+
+                <table class="
+                    w-max
+                    min-w-[2200px]
+
+                    text-sm
+                    border-collapse
+                ">
+
+                    <!-- HEAD -->
+                    <thead class="
+                        bg-gray-50
+                        sticky top-0 z-20
+                    ">
+
+                        <tr>
+
+                            <!-- NO -->
+                            <th class="
+                                sticky left-0 z-30
+                                bg-gray-50
+
+                                px-4 py-4
+
+                                text-left
+                                text-xs font-bold
+                                text-gray-600
+
+                                whitespace-nowrap
+                                border-b border-gray-200
+                            ">
+
+                                No
+
+                            </th>
+
+                            {% set headers = [
+                                'Content',
+                                'Case Folding',
+                                'Cleaning',
+                                'Tokenizing',
+                                'Normalisasi',
+                                'Stopword',
+                                'Stemming',
+                                'Sentiment'
+                            ] %}
+
+                            {% for header in headers %}
+
+                            <th class="
+                                px-4 py-4
+
+                                text-left
+                                text-xs font-bold
+                                text-gray-600
+
+                                whitespace-nowrap
+                                border-b border-gray-200
+                            ">
+
+                                {{ header }}
+
+                            </th>
+
+                            {% endfor %}
+
+                        </tr>
+
+                    </thead>
+
+                    <!-- BODY -->
+                    <tbody>
+
+                        {% for item in data %}
+
+                        <tr class="
+                            border-b border-gray-100
+                            hover:bg-gray-50
+                            transition-all duration-200
+                            align-top
+                        ">
+
+                            <!-- NO -->
+                            <td class="
+                                sticky left-0 z-10
+                                bg-white
+
+                                px-4 py-4
+
+                                text-xs text-gray-500
+                                whitespace-nowrap
+                            ">
+
+                                {{ ((page - 1) * 10) + loop.index }}
+
+                            </td>
+
+                            <!-- DATA -->
+                            {% for i in range(1, 8) %}
+
+                            <td class="px-4 py-4">
+
+                                <div class="w-[260px]">
+
+                                    <p class="
+                                        text-xs text-gray-700
+                                        leading-6
+                                        break-words
+                                    ">
+
+                                        {{ item[i] }}
+
+                                    </p>
+
+                                </div>
+
+                            </td>
+
+                            {% endfor %}
+
+                            <!-- LABEL -->
+                            <td class="
+                                px-4 py-4
+                                whitespace-nowrap
+                            ">
+
+                                {% if item[8] == 'positif' %}
+
+                                <span class="
+                                    inline-flex items-center
+
+                                    px-3 py-1.5 rounded-xl
+
+                                    bg-emerald-100
+                                    text-emerald-600
+
+                                    text-xs font-semibold
+                                ">
+
+                                    Positif
+
+                                </span>
+
+                                {% elif item[8] == 'netral' %}
+
+                                <span class="
+                                    inline-flex items-center
+
+                                    px-3 py-1.5 rounded-xl
+
+                                    bg-yellow-100
+                                    text-yellow-600
+
+                                    text-xs font-semibold
+                                ">
+
+                                    Netral
+
+                                </span>
+
+                                {% else %}
+
+                                <span class="
+                                    inline-flex items-center
+
+                                    px-3 py-1.5 rounded-xl
+
+                                    bg-red-100
+                                    text-red-600
+
+                                    text-xs font-semibold
+                                ">
+
+                                    Negatif
+
+                                </span>
+
+                                {% endif %}
+
+                            </td>
+
+                        </tr>
+
+                        {% endfor %}
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+<!-- ===================================== -->
+<!-- CUSTOM SCROLLBAR -->
+<!-- ===================================== -->
+
+<style>
+
+.custom-scrollbar::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+    background: #f1f5f9;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 999px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+}
+
+</style>
+<!-- ===================================== -->
+<!-- PAGINATION -->
+<!-- ===================================== -->
+
+<div class="
+    flex flex-col md:flex-row
+    items-center justify-between
+    gap-5 mt-8
+">
+
+    <p class="text-sm text-gray-500">
+        Halaman {{ page }} dari {{ total_pages }}
+    </p>
+
+    <div class="flex items-center gap-2 flex-wrap">
+
+        {% if page > 1 %}
+
+        <a
+            href="{{ url_for('preprocessing', page=page-1) }}"
+
+            class="
+                w-10 h-10 rounded-xl
+                bg-white border border-gray-200
+                hover:bg-gray-100
+                flex items-center justify-center
+                text-gray-700
+            "
+        >
+
+            <i class="fa-solid fa-chevron-left"></i>
+
+        </a>
+
+        {% endif %}
+
+        {% for p in range(1, total_pages + 1) %}
+
+            {% if p >= page - 2 and p <= page + 2 %}
+
+            <a
+                href="{{ url_for('preprocessing', page=p) }}"
+
+                class="
+                    w-10 h-10 rounded-xl
+                    flex items-center justify-center
+                    text-sm font-semibold
+                    transition-all duration-300
+
+                    {% if p == page %}
+                    bg-emerald-500 text-white
+                    {% else %}
+                    bg-white border border-gray-200
+                    hover:bg-gray-100 text-gray-700
+                    {% endif %}
+                "
+            >
+
+                {{ p }}
+
+            </a>
+
+            {% endif %}
+
+        {% endfor %}
+
+        {% if page < total_pages %}
+
+        <a
+            href="{{ url_for('preprocessing', page=page+1) }}"
+
+            class="
+                w-10 h-10 rounded-xl
+                bg-white border border-gray-200
+                hover:bg-gray-100
+                flex items-center justify-center
+                text-gray-700
+            "
+        >
+
+            <i class="fa-solid fa-chevron-right"></i>
+
+        </a>
+
+        {% endif %}
+
+    </div>
+
+</div>
+
+{% endblock %}

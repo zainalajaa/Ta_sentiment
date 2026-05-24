@@ -48,7 +48,7 @@
 
     <div class="overflow-x-auto">
 
-        <table class="w-full min-w-[800px]">
+        <table class="w-full min-w-[900px]">
 
             <!-- HEAD -->
             <thead class="bg-gray-100">
@@ -60,7 +60,7 @@
                     </th>
 
                     <th class="px-6 py-4 text-left">
-                        Username
+                        User
                     </th>
 
                     <th class="px-6 py-4 text-left">
@@ -82,6 +82,39 @@
             <!-- BODY -->
             <tbody>
 
+                {% if data|length == 0 %}
+
+                <tr>
+
+                    <td colspan="5" class="px-6 py-16 text-center">
+
+                        <div class="flex flex-col items-center">
+
+                            <div class="
+                                w-20 h-20 rounded-full
+                                bg-gray-100
+                                flex items-center justify-center
+                                text-3xl text-gray-400
+                            ">
+                                <i class="fa-solid fa-users"></i>
+                            </div>
+
+                            <h3 class="mt-5 text-lg font-semibold text-gray-700">
+                                Belum ada user
+                            </h3>
+
+                            <p class="text-gray-500 mt-1">
+                                Tambahkan user pertama ke sistem
+                            </p>
+
+                        </div>
+
+                    </td>
+
+                </tr>
+
+                {% endif %}
+
                 {% for user in data %}
 
                 <tr class="border-b hover:bg-gray-50 transition-all duration-300">
@@ -91,14 +124,26 @@
                         {{ loop.index }}
                     </td>
 
-                    <!-- USERNAME -->
+                    <!-- USER -->
                     <td class="px-6 py-5">
 
                         <div class="flex items-center gap-3">
 
                             <!-- AVATAR -->
+                            {% if user[4] %}
+
+                            <img
+                                src="{{ url_for('static', filename='uploads/users/' ~ user[4]) }}"
+                                class="
+                                    w-12 h-12 rounded-2xl
+                                    object-cover border
+                                "
+                            >
+
+                            {% else %}
+
                             <div class="
-                                w-11 h-11 rounded-2xl
+                                w-12 h-12 rounded-2xl
                                 flex items-center justify-center
                                 font-bold text-sm
 
@@ -112,6 +157,8 @@
                                 {{ user[1][0]|upper }}
 
                             </div>
+
+                            {% endif %}
 
                             <div>
 
@@ -211,13 +258,7 @@
 
                             <button
                                 type="button"
-
-                                onclick="
-                                    openDeleteModal(
-                                        '{{ user[0] }}'
-                                    )
-                                "
-
+                                onclick="openDeleteModal('{{ user[0] }}')"
                                 class="
                                     px-4 py-2 rounded-xl
                                     bg-red-100 hover:bg-red-200
@@ -262,10 +303,7 @@
     "
 ></div>
 
-<!-- ========================= -->
-<!-- MODAL ADD USER -->
-<!-- ========================= -->
-
+<!-- ADD MODAL -->
 <div
     id="addModal"
     class="
@@ -293,6 +331,7 @@
         "
     >
 
+        <!-- HEADER -->
         <div class="flex items-center justify-between mb-8">
 
             <div>
@@ -322,9 +361,11 @@
 
         </div>
 
+        <!-- FORM -->
         <form
             action="/users/add"
             method="POST"
+            enctype="multipart/form-data"
             class="space-y-5"
         >
 
@@ -382,6 +423,18 @@
                 "
             >
 
+            <!-- PHOTO -->
+            <input
+                type="file"
+                name="photo"
+                accept="image/*"
+
+                class="
+                    w-full px-5 py-4
+                    rounded-2xl border border-gray-200
+                "
+            >
+
             <select
                 name="role"
 
@@ -428,20 +481,14 @@
 
 </div>
 
-<!-- ========================= -->
-<!-- DETAIL & EDIT MODAL -->
-<!-- ========================= -->
-
 {% for user in data %}
 
-<!-- DETAIL -->
+<!-- DETAIL MODAL -->
 <div
     id="detailModal{{ user[0] }}"
     class="
         fixed inset-0 z-50
-
         flex items-center justify-center
-
         p-5
 
         opacity-0 invisible
@@ -454,10 +501,8 @@
         id="detailModal{{ user[0] }}Content"
         class="
             w-full max-w-xl
-
             bg-white rounded-3xl
             shadow-2xl
-
             p-8
 
             scale-95 opacity-0
@@ -466,6 +511,7 @@
         "
     >
 
+        <!-- HEADER -->
         <div class="flex items-center justify-between mb-8">
 
             <h2 class="text-3xl font-bold text-gray-800">
@@ -487,6 +533,41 @@
 
         </div>
 
+
+        <!-- AVATAR -->
+        <div class="flex justify-center mb-6">
+
+            {% if user[4] and user[4] != '' %}
+
+            <img
+                src="{{ url_for('static', filename='uploads/users/' ~ user[4]) }}"
+
+                class="
+                    w-28 h-28 rounded-full
+                    object-cover
+                    border-4 border-gray-100
+                    shadow-lg
+                "
+            >
+
+            {% else %}
+
+            <div class="
+                w-28 h-28 rounded-full
+                bg-gray-200
+
+                flex items-center justify-center
+
+                text-4xl
+            ">
+                👤
+            </div>
+
+            {% endif %}
+
+        </div>
+
+        <!-- CONTENT -->
         <div class="space-y-5">
 
             <div>
@@ -531,14 +612,12 @@
 
 </div>
 
-<!-- EDIT -->
+<!-- EDIT MODAL -->
 <div
     id="editModal{{ user[0] }}"
     class="
         fixed inset-0 z-50
-
         flex items-center justify-center
-
         p-5
 
         opacity-0 invisible
@@ -551,10 +630,8 @@
         id="editModal{{ user[0] }}Content"
         class="
             w-full max-w-2xl
-
             bg-white rounded-3xl
             shadow-2xl
-
             p-8
 
             scale-95 opacity-0
@@ -563,6 +640,7 @@
         "
     >
 
+        <!-- HEADER -->
         <div class="flex items-center justify-between mb-8">
 
             <h2 class="text-3xl font-bold text-gray-800">
@@ -584,9 +662,40 @@
 
         </div>
 
+        <!-- AVATAR -->
+        <div class="flex justify-center mb-5">
+
+            {% if user[4] %}
+
+            <img
+                src="{{ url_for('static', filename='uploads/users/' ~ user[4]) }}"
+                class="
+                    w-24 h-24 rounded-full
+                    object-cover border-4 border-gray-100
+                    shadow
+                "
+            >
+
+            {% else %}
+
+            <div class="
+                w-24 h-24 rounded-full
+                bg-gray-200
+                flex items-center justify-center
+                text-3xl
+            ">
+                👤
+            </div>
+
+            {% endif %}
+
+        </div>
+
+        <!-- FORM -->
         <form
             action="/users/edit/{{ user[0] }}"
             method="POST"
+            enctype="multipart/form-data"
             class="space-y-5"
         >
 
@@ -626,6 +735,36 @@
                 "
             >
 
+            <!-- PASSWORD -->
+            <input
+                type="password"
+                name="password"
+                placeholder="Password baru (opsional)"
+
+                class="
+                    w-full px-5 py-4
+                    rounded-2xl border border-gray-200
+
+                    focus:outline-none
+                    focus:ring-2
+                    focus:ring-yellow-500
+
+                    transition-all duration-300
+                "
+            >
+
+            <!-- PHOTO -->
+            <input
+                type="file"
+                name="photo"
+                accept="image/*"
+
+                class="
+                    w-full px-5 py-4
+                    rounded-2xl border border-gray-200
+                "
+            >
+
             <select
                 name="role"
 
@@ -643,14 +782,18 @@
 
                 <option
                     value="user"
-                    {% if user[3] == 'user' %}selected{% endif %}
+                    {% if user[3] == 'user' %}
+                        selected
+                    {% endif %}
                 >
                     User
                 </option>
 
                 <option
                     value="admin"
-                    {% if user[3] == 'admin' %}selected{% endif %}
+                    {% if user[3] == 'admin' %}
+                        selected
+                    {% endif %}
                 >
                     Admin
                 </option>
@@ -713,35 +856,26 @@
     id="toast"
     class="
         fixed top-5 right-5 z-[999]
-
         translate-x-[150%]
-
         transition-all duration-500 ease-out
     "
 >
 
     <div class="
         flex items-center gap-4
-
         bg-white
         shadow-2xl
-
         border border-gray-100
-
         rounded-2xl
-
         px-5 py-4
-
         min-w-[320px]
     ">
 
         <!-- ICON -->
         <div class="
             w-12 h-12 rounded-2xl
-
             bg-emerald-100
             text-emerald-600
-
             flex items-center justify-center
         ">
 
@@ -777,30 +911,21 @@
     id="deleteModal"
     class="
         fixed inset-0 z-[999]
-
         flex items-center justify-center
-
         p-5
-
         opacity-0 invisible
-
         transition-all duration-300
     "
 >
 
-    <!-- CARD -->
     <div
         id="deleteModalContent"
         class="
             w-full max-w-md
-
             bg-white rounded-3xl
             shadow-2xl
-
             p-8
-
             scale-95 opacity-0
-
             transition-all duration-300
         "
     >
@@ -810,10 +935,8 @@
 
             <div class="
                 w-20 h-20 rounded-full
-
                 bg-red-100
                 text-red-600
-
                 flex items-center justify-center
             ">
 
@@ -856,11 +979,8 @@
 
                 class="
                     flex-1 py-4 rounded-2xl
-
                     bg-gray-100 hover:bg-gray-200
-
                     text-gray-700 font-semibold
-
                     transition-all duration-300
                 "
             >
@@ -876,12 +996,9 @@
 
                 class="
                     flex-1 py-4 rounded-2xl
-
                     bg-red-500 hover:bg-red-600
-
                     text-center
                     text-white font-semibold
-
                     transition-all duration-300
                 "
             >

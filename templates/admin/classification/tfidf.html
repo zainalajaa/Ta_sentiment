@@ -1,0 +1,98 @@
+{% extends 'layouts/admin.html' %}
+
+{% block content %}
+
+<div class="mb-6">
+
+    <div class="bg-white rounded-3xl shadow-lg p-6">
+
+        <h1 class="text-3xl font-bold text-gray-800 mb-2">
+            TF-IDF Vectorizer
+        </h1>
+
+        <p class="text-gray-500">
+            Pembobotan kata menggunakan metode
+            TF-IDF.
+        </p>
+
+        <div class="mt-5 flex flex-wrap gap-4">
+
+            <div class="bg-blue-50 text-blue-700 px-5 py-3 rounded-2xl">
+                Total Dokumen:
+                <span class="font-bold">
+                    {{ total_documents }}
+                </span>
+            </div>
+
+            <div class="bg-emerald-50 text-emerald-700 px-5 py-3 rounded-2xl">
+                Total Term:
+                <span class="font-bold">
+                    {{ total_terms }}
+                </span>
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+<div class="bg-white rounded-3xl shadow-lg p-6 overflow-auto">
+
+    <h2 class="text-2xl font-bold mb-5">
+        Matrix TF-IDF
+    </h2>
+
+    <table class="min-w-full text-sm">
+
+        <thead>
+
+            <tr class="bg-gray-100">
+
+                <th class="px-4 py-3 border">
+                    No
+                </th>
+
+                {% for col in columns %}
+
+                <th class="px-4 py-3 border whitespace-nowrap">
+                    {{ col }}
+                </th>
+
+                {% endfor %}
+
+            </tr>
+
+        </thead>
+
+        <tbody>
+
+            {% for row in tables %}
+
+            <tr>
+
+                <td class="px-4 py-3 border">
+                    {{ loop.index }}
+                </td>
+
+                {% for value in row %}
+
+                <td class="px-4 py-3 border whitespace-nowrap">
+
+                    {{ "%.3f"|format(value) }}
+
+                </td>
+
+                {% endfor %}
+
+            </tr>
+
+            {% endfor %}
+
+        </tbody>
+
+    </table>
+
+</div>
+
+{% endblock %}

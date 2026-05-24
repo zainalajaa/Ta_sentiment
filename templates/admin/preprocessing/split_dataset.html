@@ -1,0 +1,242 @@
+{% extends 'layouts/admin.html' %}
+
+{% block content %}
+
+<!-- HEADER -->
+<div class="mb-6">
+
+    <div class="bg-white rounded-3xl shadow-lg p-6">
+
+        <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+
+            <div>
+
+                <h1 class="text-3xl font-bold text-gray-800 mb-2">
+                    Split Dataset
+                </h1>
+
+                <p class="text-gray-500">
+                    Pembagian data training dan testing menggunakan
+                    metode train_test_split.
+                </p>
+
+            </div>
+
+            <!-- FORM RATIO -->
+            <form method="POST" class="flex flex-wrap gap-4 items-end">
+
+                <div>
+
+                    <label class="block text-sm font-semibold mb-2 text-gray-700">
+                        Rasio Dataset
+                    </label>
+
+                    <select
+                        name="ratio"
+                        class="
+                            px-4
+                            py-3
+                            rounded-2xl
+                            border
+                            border-gray-300
+                            focus:outline-none
+                            focus:ring-2
+                            focus:ring-emerald-400
+                        "
+                    >
+                        <option value="90-10"
+                            {% if training_ratio == 90 %}
+                                selected
+                            {% endif %}
+                        >
+                            90% Training / 10% Testing
+                        </option>
+
+                        <option value="80-20"
+                            {% if training_ratio == 80 %}
+                                selected
+                            {% endif %}
+                        >
+                            80% Training / 20% Testing
+                        </option>
+
+                        <option value="70-30"
+                            {% if training_ratio == 70 %}
+                                selected
+                            {% endif %}
+                        >
+                            70% Training / 30% Testing
+                        </option>
+
+                        <option value="60-40"
+                            {% if training_ratio == 60 %}
+                                selected
+                            {% endif %}
+                        >
+                            60% Training / 40% Testing
+                        </option>
+
+                    </select>
+
+                </div>
+
+                <button
+                    type="submit"
+                    class="
+                        px-5
+                        py-3
+                        bg-emerald-500
+                        hover:bg-emerald-600
+                        text-white
+                        rounded-2xl
+                        font-semibold
+                        transition
+                    "
+                >
+                    Split Dataset
+                </button>
+
+            </form>
+
+        </div>
+
+        <!-- STATISTIC -->
+        <div class="mt-6 flex flex-wrap gap-4">
+
+            <div class="bg-blue-50 text-blue-700 px-5 py-3 rounded-2xl">
+
+                Training:
+                <span class="font-bold">
+                    {{ train_data|length }}
+                </span>
+
+            </div>
+
+            <div class="bg-emerald-50 text-emerald-700 px-5 py-3 rounded-2xl">
+
+                Testing:
+                <span class="font-bold">
+                    {{ test_data|length }}
+                </span>
+
+            </div>
+
+            <div class="bg-orange-50 text-orange-700 px-5 py-3 rounded-2xl">
+
+                Rasio:
+                <span class="font-bold">
+                    {{ training_ratio }}:{{ testing_ratio }}
+                </span>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+<!-- CONTENT -->
+<div class="grid lg:grid-cols-2 gap-6">
+
+    <!-- TRAINING -->
+    <div class="bg-white rounded-3xl shadow-lg p-6">
+
+        <h2 class="text-2xl font-bold mb-5 text-blue-600">
+            Data Training
+        </h2>
+
+        <div class="space-y-3 max-h-[700px] overflow-y-auto pr-2">
+
+            {% for item in train_data %}
+
+            <div class="p-4 rounded-2xl bg-gray-50 border border-gray-200">
+
+                <!-- LABEL -->
+                <span class="
+                    inline-block
+                    px-3
+                    py-1
+                    rounded-xl
+                    text-sm
+                    font-medium
+                    mb-3
+
+                    {% if item[0] == 'positif' %}
+                        bg-emerald-100 text-emerald-700
+                    {% else %}
+                        bg-red-100 text-red-700
+                    {% endif %}
+                ">
+
+                    {{ item[0] }}
+
+                </span>
+
+                <!-- TEXT -->
+                <p class="text-gray-700 leading-relaxed">
+
+                    {{ item[1] }}
+
+                </p>
+
+            </div>
+
+            {% endfor %}
+
+        </div>
+
+    </div>
+
+    <!-- TESTING -->
+    <div class="bg-white rounded-3xl shadow-lg p-6">
+
+        <h2 class="text-2xl font-bold mb-5 text-emerald-600">
+            Data Testing
+        </h2>
+
+        <div class="space-y-3 max-h-[700px] overflow-y-auto pr-2">
+
+            {% for item in test_data %}
+
+            <div class="p-4 rounded-2xl bg-gray-50 border border-gray-200">
+
+                <!-- LABEL -->
+                <span class="
+                    inline-block
+                    px-3
+                    py-1
+                    rounded-xl
+                    text-sm
+                    font-medium
+                    mb-3
+
+                    {% if item[0] == 'positif' %}
+                        bg-emerald-100 text-emerald-700
+                    {% else %}
+                        bg-red-100 text-red-700
+                    {% endif %}
+                ">
+
+                    {{ item[0] }}
+
+                </span>
+
+                <!-- TEXT -->
+                <p class="text-gray-700 leading-relaxed">
+
+                    {{ item[1] }}
+
+                </p>
+
+            </div>
+
+            {% endfor %}
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}
