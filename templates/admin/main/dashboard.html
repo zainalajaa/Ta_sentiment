@@ -1,0 +1,338 @@
+{% extends 'layouts/admin.html' %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+
+<div class="space-y-6">
+
+```
+<!-- HERO HEADER -->
+<div class="bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-500 rounded-3xl p-8 text-white shadow-lg">
+
+    <h1 class="text-4xl font-bold">
+        Dashboard Analisis Sentimen
+    </h1>
+
+    <p class="mt-2 text-emerald-100">
+        Monitoring Sistem Analisis Sentimen Ulasan Aplikasi Edlink Menggunakan Algoritma Naïve Bayes Classifier
+    </p>
+
+</div>
+
+<!-- STATISTIK UTAMA -->
+<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+
+    <!-- TOTAL DATASET -->
+    <div class="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm hover:shadow-lg transition-all duration-300">
+
+        <div class="flex items-center justify-between">
+
+            <div>
+
+                <p class="text-sm text-gray-500">
+                    Total Dataset
+                </p>
+
+                <h2 class="text-4xl font-bold text-gray-800 mt-3">
+                    {{ total_dataset }}
+                </h2>
+
+            </div>
+
+            <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center">
+
+                <i class="fa-solid fa-database text-white text-2xl"></i>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- TRAINING -->
+    <div class="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm hover:shadow-lg transition-all duration-300">
+
+        <div class="flex items-center justify-between">
+
+            <div>
+
+                <p class="text-sm text-gray-500">
+                    Data Training
+                </p>
+
+                <h2 class="text-4xl font-bold text-indigo-600 mt-3">
+                    {{ train_count }}
+                </h2>
+
+            </div>
+
+            <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-400 to-indigo-600 flex items-center justify-center">
+
+                <i class="fa-solid fa-graduation-cap text-white text-2xl"></i>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- TESTING -->
+    <div class="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm hover:shadow-lg transition-all duration-300">
+
+        <div class="flex items-center justify-between">
+
+            <div>
+
+                <p class="text-sm text-gray-500">
+                    Data Testing
+                </p>
+
+                <h2 class="text-4xl font-bold text-orange-600 mt-3">
+                    {{ test_count }}
+                </h2>
+
+            </div>
+
+            <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center">
+
+                <i class="fa-solid fa-flask text-white text-2xl"></i>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- ACCURACY -->
+    <div class="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm hover:shadow-lg transition-all duration-300">
+
+        <div class="flex items-center justify-between">
+
+            <div>
+
+                <p class="text-sm text-gray-500">
+                    Accuracy
+                </p>
+
+                <h2 class="text-4xl font-bold text-blue-600 mt-3">
+                    {{ accuracy }}%
+                </h2>
+
+            </div>
+
+            <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center">
+
+                <i class="fa-solid fa-bullseye text-white text-2xl"></i>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+<!-- SENTIMEN -->
+<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+
+    <div class="bg-white rounded-3xl p-6 shadow-sm border border-gray-100">
+
+        <p class="text-sm text-gray-500">
+            Sentimen Positif
+        </p>
+
+        <h2 class="text-4xl font-bold text-green-600 mt-3">
+            {{ total_positif }}
+        </h2>
+
+    </div>
+
+    <div class="bg-white rounded-3xl p-6 shadow-sm border border-gray-100">
+
+        <p class="text-sm text-gray-500">
+            Sentimen Negatif
+        </p>
+
+        <h2 class="text-4xl font-bold text-red-600 mt-3">
+            {{ total_negatif }}
+        </h2>
+
+    </div>
+
+    <div class="bg-white rounded-3xl p-6 shadow-sm border border-gray-100">
+
+        <p class="text-sm text-gray-500">
+            Total Prediksi
+        </p>
+
+        <h2 class="text-4xl font-bold text-purple-600 mt-3">
+            {{ total_prediksi }}
+        </h2>
+
+    </div>
+
+    <div class="bg-white rounded-3xl p-6 shadow-sm border border-gray-100">
+
+        <p class="text-sm text-gray-500">
+            F1 Score
+        </p>
+
+        <h2 class="text-4xl font-bold text-cyan-600 mt-3">
+            {{ f1_score }}%
+        </h2>
+
+    </div>
+
+</div>
+
+<!-- CHART & KPI -->
+<div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+
+    <!-- CHART -->
+    <div class="bg-white rounded-3xl p-6 shadow-sm border border-gray-100">
+
+        <div class="flex items-center justify-between mb-6">
+
+            <h3 class="text-xl font-bold text-gray-800">
+                Distribusi Sentimen
+            </h3>
+
+        </div>
+
+        <canvas
+            id="sentimentChart"
+            data-positif="{{ total_positif }}"
+            data-negatif="{{ total_negatif }}">
+        </canvas>
+
+    </div>
+
+    <!-- KPI -->
+    <div class="bg-white rounded-3xl p-6 shadow-sm border border-gray-100">
+
+        <h3 class="text-xl font-bold text-gray-800 mb-6">
+            Evaluasi Model
+        </h3>
+
+        <div class="grid grid-cols-2 gap-4">
+
+            <div class="bg-blue-50 rounded-2xl p-5">
+
+                <p class="text-sm text-blue-600">
+                    Accuracy
+                </p>
+
+                <h3 class="text-3xl font-bold text-blue-700 mt-2">
+                    {{ accuracy }}%
+                </h3>
+
+            </div>
+
+            <div class="bg-purple-50 rounded-2xl p-5">
+
+                <p class="text-sm text-purple-600">
+                    Precision
+                </p>
+
+                <h3 class="text-3xl font-bold text-purple-700 mt-2">
+                    {{ precision }}%
+                </h3>
+
+            </div>
+
+            <div class="bg-orange-50 rounded-2xl p-5">
+
+                <p class="text-sm text-orange-600">
+                    Recall
+                </p>
+
+                <h3 class="text-3xl font-bold text-orange-700 mt-2">
+                    {{ recall }}%
+                </h3>
+
+            </div>
+
+            <div class="bg-cyan-50 rounded-2xl p-5">
+
+                <p class="text-sm text-cyan-600">
+                    F1 Score
+                </p>
+
+                <h3 class="text-3xl font-bold text-cyan-700 mt-2">
+                    {{ f1_score }}%
+                </h3>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+<!-- RINGKASAN SISTEM -->
+<div class="bg-white rounded-3xl border border-gray-100 shadow-sm p-8">
+
+    <h3 class="text-xl font-bold text-gray-800 mb-6">
+        Ringkasan Sistem
+    </h3>
+
+    <div class="grid md:grid-cols-4 gap-6">
+
+        <div>
+
+            <p class="text-sm text-gray-500">
+                Algoritma
+            </p>
+
+            <h4 class="text-lg font-bold text-gray-800 mt-2">
+                Naïve Bayes
+            </h4>
+
+        </div>
+
+        <div>
+
+            <p class="text-sm text-gray-500">
+                Training Data
+            </p>
+
+            <h4 class="text-lg font-bold text-gray-800 mt-2">
+                {{ train_count }}
+            </h4>
+
+        </div>
+
+        <div>
+
+            <p class="text-sm text-gray-500">
+                Testing Data
+            </p>
+
+            <h4 class="text-lg font-bold text-gray-800 mt-2">
+                {{ test_count }}
+            </h4>
+
+        </div>
+
+        <div>
+
+            <p class="text-sm text-gray-500">
+                Total Dataset
+            </p>
+
+            <h4 class="text-lg font-bold text-gray-800 mt-2">
+                {{ total_dataset }}
+            </h4>
+
+        </div>
+
+    </div>
+
+</div>
+```
+
+</div>
+
+{% endblock %}

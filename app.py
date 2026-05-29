@@ -99,6 +99,12 @@ stop_words = set(
 )
 
 
+from werkzeug.security import (
+    generate_password_hash,
+    check_password_hash
+)
+
+
 
 # =========================================
 # FLASK APP
@@ -375,58 +381,301 @@ def index():
 
 
 # =====================================================
-# DASHBOARD ADMIN
+# DASHBOARD ADMIN DAN PROFILE
 # =====================================================
-@app.route("/dashboard")
+@app.route('/dashboard')
 @admin_required
 def dashboard():
 
     conn = get_connection()
     cursor = conn.cursor()
 
-    # statistik sentimen
-    query = """
-    SELECT
-        SUM(CASE WHEN hasil='Positif' THEN 1 ELSE 0 END),
-        SUM(CASE WHEN hasil='Negatif' THEN 1 ELSE 0 END)
-    FROM hasil_analisis
-    """
+    # ======================
+    # DATASET
+    # ======================
 
-    cursor.execute(query)
+    cursor.execute("""
+        SELECT COUNT(*)
+        FROM preprocessing
+    """)
 
-    stats = cursor.fetchone()
+    total_dataset = cursor.fetchone()[0]
 
-    # total user
-    cursor.execute(
-        "SELECT COUNT(*) FROM users WHERE role='user'"
-    )
+    # ======================
+    # POSITIF
+    # ======================
 
-    total_user = cursor.fetchone()[0]
+    cursor.execute("""
+        SELECT COUNT(*)
+        FROM preprocessing
+        WHERE label='positif'
+    """)
 
-    # total analisis
-    cursor.execute(
-        "SELECT COUNT(*) FROM hasil_analisis"
-    )
+    total_positif = cursor.fetchone()[0]
 
-    total_analisis = cursor.fetchone()[0]
+    # ======================
+    # NEGATIF
+    # ======================
+
+    cursor.execute("""
+        SELECT COUNT(*)
+        FROM preprocessing
+        WHERE label='negatif'
+    """)
+
+    total_negatif = cursor.fetchone()[0]
+
+    # ======================
+    # HASIL ANALISIS
+    # ======================
+
+    cursor.execute("""
+        SELECT COUNT(*)
+        FROM hasil_analisis
+    """)
+
+    total_prediksi = cursor.fetchone()[0]
 
     cursor.close()
     conn.close()
 
+    # ======================
+    # SPLIT DATASET
+    # ======================
+
+    try:
+
+        X_train, X_test, y_train, y_test = get_split_data()
+
+        train_count = len(X_train)
+        test_count = len(X_test)
+
+        # ======================
+        # TFIDF
+        # ======================
+
+        vectorizer = TfidfVectorizer()
+
+        X_train_tfidf = vectorizer.fit_transform(X_train)
+        X_test_tfidf = vectorizer.transform(X_test)
+
+        # ======================
+        # NBC
+        # ======================
+
+        model = MultinomialNB()
+
+        model.fit(X_train_tfidf, y_train)
+
+        predictions = model.predict(X_test_tfidf)
+
+        # ======================
+        # EVALUATION
+        # ======================
+
+        accuracy = round(
+            accuracy_score(y_test, predictions) * 100,
+            2
+        )
+
+        precision = round(
+            precision_score(
+                y_test,
+                predictions,
+                average='weighted'
+            ) * 100,
+            2
+        )
+
+        recall = round(
+            recall_score(
+                y_test,
+                predictions,
+                average='weighted'
+            ) * 100,
+            2
+        )
+
+        f1_score_value = round(
+            f1_score(
+                y_test,
+                predictions,
+                average='weighted'
+            ) * 100,
+            2
+        )
+
+    except:
+
+        train_count = 0
+        test_count = 0
+
+        accuracy = 0
+        precision = 0
+        recall = 0
+        f1_score_value = 0
+
     return render_template(
-        "admin/dashboard.html",
-        stats=stats,
-        total_user=total_user,
-        total_analisis=total_analisis
+        'admin/main/dashboard.html',
+
+        total_dataset=total_dataset,
+        total_positif=total_positif,
+        total_negatif=total_negatif,
+        total_prediksi=total_prediksi,
+
+        train_count=train_count,
+        test_count=test_count,
+
+        accuracy=accuracy,
+        precision=precision,
+        recall=recall,
+        f1_score=f1_score_value
     )
 
+
+@app.route('/profile')
+@login_required
+def profile():
+    return render_template(
+        'admin/main/profile.html'
+    )
+
+# =====================================================
+# EDIT PROFILE
+# =====================================================
+
+@app.route('/profile/update', methods=['POST'])
+@login_required
+def update_profile():
+
+    username = request.form['username'].strip()
+    email = request.form['email'].strip()
+
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    # cek email dipakai user lain
+    cursor.execute("""
+        SELECT id
+        FROM users
+        WHERE email=%s
+        AND id != %s
+    """, (
+        email,
+        session['user_id']
+    ))
+
+    existing_user = cursor.fetchone()
+
+    if existing_user:
+
+        cursor.close()
+        conn.close()
+
+        flash('Email sudah digunakan oleh pengguna lain.', 'error')
+
+        return redirect('/profile')
+
+    # update data
+    cursor.execute("""
+        UPDATE users
+        SET username=%s,
+            email=%s
+        WHERE id=%s
+    """, (
+        username,
+        email,
+        session['user_id']
+    ))
+
+    conn.commit()
+
+    cursor.close()
+    conn.close()
+
+    # update session
+    session['username'] = username
+    session['email'] = email
+
+    flash('Profil berhasil diperbarui.', 'success')
+
+    return redirect('/profile')
+
+# =====================================================
+# EDIT PASSWORD PROFILE
+# =====================================================
+
+@app.route('/profile/change-password', methods=['POST'])
+@login_required
+def change_password():
+
+    old_password = request.form['old_password']
+    new_password = request.form['new_password']
+    confirm_password = request.form['confirm_password']
+
+    if new_password != confirm_password:
+
+        flash('Konfirmasi password tidak cocok.', 'error')
+
+        return redirect('/profile')
+
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT password
+        FROM users
+        WHERE id=%s
+    """, (
+        session['user_id'],
+    ))
+
+    user = cursor.fetchone()
+
+    if not user:
+
+        cursor.close()
+        conn.close()
+
+        flash('User tidak ditemukan.', 'error')
+
+        return redirect('/profile')
+
+    if not check_password_hash(user[0], old_password):
+
+        cursor.close()
+        conn.close()
+
+        flash('Password lama salah.', 'error')
+
+        return redirect('/profile')
+
+    hashed_password = generate_password_hash(new_password)
+
+    cursor.execute("""
+        UPDATE users
+        SET password=%s
+        WHERE id=%s
+    """, (
+        hashed_password,
+        session['user_id']
+    ))
+
+    conn.commit()
+
+    cursor.close()
+    conn.close()
+
+    flash('Password berhasil diubah.', 'success')
+
+    return redirect('/profile')
 
 # =====================================================
 # MANAJEMEN USER
 # =====================================================
 @app.route("/users")
 @app.route("/users")
-@admin_required
+@admin_required 
 def users():
 
     conn = get_connection()

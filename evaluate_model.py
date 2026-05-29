@@ -1,6 +1,6 @@
 import pandas as pd
-from model.preprocessing import preprocess_text
-from model.naive_bayes import predict
+from ml.preprocessing import preprocess_text
+from ml.naive_bayes import predict
 
 # load dataset
 df = pd.read_csv("data/dataset.csv")
