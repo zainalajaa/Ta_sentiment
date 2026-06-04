@@ -136,6 +136,63 @@
 
 </div>
 
+<div class="mt-6">
+
+    <div class="bg-amber-50 border border-amber-200 rounded-2xl p-5">
+
+        <h3 class="font-bold text-amber-800 mb-3">
+            Informasi Dataset
+        </h3>
+
+        <div class="space-y-2 text-amber-700">
+
+            <p>
+                Total Dataset Awal:
+                <strong>{{ total_dataset }}</strong>
+            </p>
+
+            <p>
+                Sentimen Positif:
+                <strong>{{ positif_count }}</strong>
+            </p>
+
+            <p>
+                Sentimen Negatif:
+                <strong>{{ negatif_count }}</strong>
+            </p>
+
+            <p>
+                Sentimen Netral:
+                <strong>{{ netral_count }}</strong>
+            </p>
+
+            {% if netral_count > 0 %}
+            <div class="mt-3 p-3 bg-white rounded-xl border border-amber-300">
+
+                Karena sistem menggunakan
+                <strong>klasifikasi sentimen biner</strong>
+                (Positif dan Negatif), maka
+
+                <strong>{{ netral_count }}</strong>
+
+                data sentimen netral tidak digunakan dalam proses
+                training dan testing model.
+
+            </div>
+            {% endif %}
+
+            <p class="font-semibold mt-3">
+                Total Data Digunakan:
+                {{ total_used }}
+            </p>
+
+        </div>
+
+    </div>
+
+</div>
+
+
 <!-- CONTENT -->
 <div class="grid lg:grid-cols-2 gap-6">
 

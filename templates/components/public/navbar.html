@@ -1,0 +1,119 @@
+<nav class="fixed top-0 left-0 right-0 z-50 bg-slate-950/70 backdrop-blur-lg border-b border-slate-800">
+    <div class="max-w-7xl mx-auto px-6">
+
+        <div class="flex items-center justify-between h-16">
+
+            <!-- Logo -->
+            <a href="/" class="font-bold text-xl">
+                Sentimen<span class="text-emerald-400">Edlink</span>
+            </a>
+
+            <!-- Menu Desktop -->
+            <div class="hidden md:flex items-center gap-8">
+
+                <a href="/" class="hover:text-emerald-400 transition">
+                    Beranda
+                </a>
+
+                <a href="/sentiment" class="hover:text-emerald-400 transition">
+                    Analisis
+                </a>
+
+                <a href="/about" class="hover:text-emerald-400 transition">
+                    Tentang
+                </a>
+
+            </div>
+
+            <!-- Login Check -->
+            {% if session.get('user_id') %}
+
+            <!-- Profile Dropdown -->
+            <div class="relative">
+
+                <button
+                    id="profileBtn"
+                    type="button"
+                    class="flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-slate-800 transition"
+                >
+
+                    <div class="w-10 h-10 rounded-full bg-emerald-500 flex items-center justify-center text-white font-bold">
+
+                        {% if session.get('nama') %}
+                            {{ session.get('nama')[0]|upper }}
+                        {% else %}
+                            A
+                        {% endif %}
+
+                    </div>
+
+                    <svg xmlns="http://www.w3.org/2000/svg"
+                         class="w-4 h-4 text-slate-300"
+                         fill="none"
+                         viewBox="0 0 24 24"
+                         stroke="currentColor">
+
+                        <path stroke-linecap="round"
+                              stroke-linejoin="round"
+                              stroke-width="2"
+                              d="M19 9l-7 7-7-7"/>
+
+                    </svg>
+
+                </button>
+
+                <!-- Dropdown Menu -->
+                <div
+                    id="profileMenu"
+                    class="hidden absolute right-0 mt-3 w-64 rounded-2xl border border-slate-700 bg-slate-900 shadow-xl overflow-hidden"
+                >
+
+                    <div class="px-4 py-4 border-b border-slate-700">
+
+                        <h4 class="font-semibold text-white">
+                            {{ session.get('nama') }}
+                        </h4>
+
+                        <p class="text-sm text-slate-400 mt-1">
+                            {{ session.get('email') }}
+                        </p>
+
+                    </div>
+
+                    <a href="{{ url_for('public_profile') }}"
+                    class="flex items-center px-4 py-3 hover:bg-slate-800 transition">
+                        Profil Saya
+                    </a>
+
+                    <a href="{{ url_for('logout') }}"
+                       class="flex items-center px-4 py-3 text-red-400 hover:bg-slate-800 transition">
+                        Logout
+                    </a>
+
+                </div>
+
+            </div>
+
+            {% else %}
+
+            <!-- Guest Menu -->
+            <div class="flex items-center gap-3">
+
+                <a href="/login"
+                   class="px-4 py-2 rounded-lg border border-slate-700 hover:bg-slate-800 transition">
+                    Login
+                </a>
+
+                <a href="/register"
+                   class="px-4 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 transition">
+                    Register
+                </a>
+
+            </div>
+
+            {% endif %}
+
+        </div>
+
+    </div>
+</nav>

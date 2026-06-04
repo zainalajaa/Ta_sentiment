@@ -21,7 +21,34 @@
 </div>
 
 <!-- STATISTIK UTAMA -->
-<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-6">
+
+    <!-- RASIO DATASET -->
+    <div class="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm hover:shadow-lg transition-all duration-300">
+
+        <div class="flex items-center justify-between">
+
+            <div>
+
+                <p class="text-sm text-gray-500">
+                    Rasio Dataset
+                </p>
+
+                <h2 class="text-4xl font-bold text-emerald-600 mt-3">
+                    {{ split_ratio }}
+                </h2>
+
+            </div>
+
+            <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center">
+
+                <i class="fa-solid fa-code-branch text-white text-2xl"></i>
+
+            </div>
+
+        </div>
+
+    </div>
 
     <!-- TOTAL DATASET -->
     <div class="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm hover:shadow-lg transition-all duration-300">
@@ -134,7 +161,23 @@
 </div>
 
 <!-- SENTIMEN -->
-<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-6">
+
+    <div class="bg-white rounded-3xl p-6 shadow-sm border border-gray-100">
+
+        <p class="text-sm text-gray-500">
+            Data Netral
+        </p>
+
+        <h2 class="text-4xl font-bold text-amber-600 mt-3">
+            {{ total_netral }}
+        </h2>
+
+        <p class="text-xs text-gray-400 mt-2">
+            Tidak digunakan
+        </p>
+
+    </div>
 
     <div class="bg-white rounded-3xl p-6 shadow-sm border border-gray-100">
 
@@ -272,13 +315,14 @@
 </div>
 
 <!-- RINGKASAN SISTEM -->
+<!-- RINGKASAN SISTEM -->
 <div class="bg-white rounded-3xl border border-gray-100 shadow-sm p-8">
 
     <h3 class="text-xl font-bold text-gray-800 mb-6">
         Ringkasan Sistem
     </h3>
 
-    <div class="grid md:grid-cols-4 gap-6">
+    <div class="grid md:grid-cols-2 xl:grid-cols-4 gap-6">
 
         <div>
 
@@ -287,7 +331,7 @@
             </p>
 
             <h4 class="text-lg font-bold text-gray-800 mt-2">
-                Naïve Bayes
+                Multinomial Naïve Bayes
             </h4>
 
         </div>
@@ -295,10 +339,46 @@
         <div>
 
             <p class="text-sm text-gray-500">
-                Training Data
+                Feature Extraction
             </p>
 
             <h4 class="text-lg font-bold text-gray-800 mt-2">
+                TF-IDF
+            </h4>
+
+        </div>
+
+        <div>
+
+            <p class="text-sm text-gray-500">
+                Jumlah Kelas
+            </p>
+
+            <h4 class="text-lg font-bold text-gray-800 mt-2">
+                2 Kelas
+            </h4>
+
+        </div>
+
+        <div>
+
+            <p class="text-sm text-gray-500">
+                Rasio Split
+            </p>
+
+            <h4 class="text-lg font-bold text-gray-800 mt-2">
+                {{ split_ratio }}
+            </h4>
+
+        </div>
+
+        <div>
+
+            <p class="text-sm text-gray-500">
+                Data Training
+            </p>
+
+            <h4 class="text-lg font-bold text-indigo-600 mt-2">
                 {{ train_count }}
             </h4>
 
@@ -307,10 +387,10 @@
         <div>
 
             <p class="text-sm text-gray-500">
-                Testing Data
+                Data Testing
             </p>
 
-            <h4 class="text-lg font-bold text-gray-800 mt-2">
+            <h4 class="text-lg font-bold text-orange-600 mt-2">
                 {{ test_count }}
             </h4>
 
@@ -319,16 +399,52 @@
         <div>
 
             <p class="text-sm text-gray-500">
-                Total Dataset
+                Dataset Digunakan
             </p>
 
-            <h4 class="text-lg font-bold text-gray-800 mt-2">
+            <h4 class="text-lg font-bold text-emerald-600 mt-2">
                 {{ total_dataset }}
             </h4>
 
         </div>
 
+        <div>
+
+            <p class="text-sm text-gray-500">
+                Accuracy
+            </p>
+
+            <h4 class="text-lg font-bold text-blue-600 mt-2">
+                {{ accuracy }}%
+            </h4>
+
+        </div>
+
     </div>
+
+    {% if total_netral > 0 %}
+
+    <div class="mt-8 bg-amber-50 border border-amber-200 rounded-2xl p-5">
+
+        <h4 class="font-bold text-amber-800 mb-2">
+            Informasi Dataset
+        </h4>
+
+        <p class="text-amber-700 leading-relaxed">
+
+            Sistem menggunakan klasifikasi sentimen biner
+            (Positif dan Negatif).
+
+            Sebanyak
+            <strong>{{ total_netral }}</strong>
+            data sentimen netral tidak digunakan dalam proses
+            training, testing, dan evaluasi model.
+
+        </p>
+
+    </div>
+
+    {% endif %}
 
 </div>
 ```

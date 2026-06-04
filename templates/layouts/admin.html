@@ -90,6 +90,63 @@
                 overflow-hidden
             ">
 
+                <!-- ========================================= -->
+                <!-- FLASH MESSAGE -->
+                <!-- ========================================= -->
+
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+
+                        <div class="mb-6 space-y-3">
+
+                            {% for category, message in messages %}
+
+                                <div
+                                    class="
+                                        px-4 py-3
+                                        rounded-xl
+                                        border
+                                        text-sm
+                                        font-medium
+
+                                        {% if category == 'success' %}
+                                            bg-green-50
+                                            text-green-700
+                                            border-green-200
+
+                                        {% elif category == 'danger' %}
+                                            bg-red-50
+                                            text-red-700
+                                            border-red-200
+
+                                        {% elif category == 'warning' %}
+                                            bg-yellow-50
+                                            text-yellow-700
+                                            border-yellow-200
+
+                                        {% else %}
+                                            bg-blue-50
+                                            text-blue-700
+                                            border-blue-200
+                                        {% endif %}
+                                    "
+                                >
+
+                                    {{ message }}
+
+                                </div>
+
+                            {% endfor %}
+
+                        </div>
+
+                    {% endif %}
+                {% endwith %}
+
+                <!-- ========================================= -->
+                <!-- END FLASH MESSAGE -->
+                <!-- ========================================= -->
+
                 {% block content %}
                 {% endblock %}
 
@@ -161,6 +218,7 @@
     }
 
 </script>
+
 <script src="{{ url_for('static', filename='js/navbar.js') }}"></script>
 <script src="{{ url_for('static', filename='js/profile.js') }}"></script>
 

@@ -154,7 +154,7 @@
         <div>
 
             <p class="text-xs uppercase tracking-widest
-                      text-gray-500 px-3 mb-3">
+                    text-gray-500 px-3 mb-3">
                 Classification
             </p>
 
@@ -162,15 +162,15 @@
 
                 <!-- TFIDF -->
                 <a href="/classification/tfidf"
-                   class="flex items-center gap-4 px-4 py-3 rounded-2xl
-                   transition-all duration-300
+                class="flex items-center gap-4 px-4 py-3 rounded-2xl
+                transition-all duration-300
 
-                   {% if request.path.startswith('/classification/tfidf') %}
-                   bg-emerald-500 shadow-lg shadow-emerald-500/20
-                   {% else %}
-                   hover:bg-gray-800
-                   {% endif %}
-                   ">
+                {% if request.path.startswith('/classification/tfidf') %}
+                bg-emerald-500 shadow-lg shadow-emerald-500/20
+                {% else %}
+                hover:bg-gray-800
+                {% endif %}
+                ">
 
                     <div class="w-11 h-11 rounded-xl bg-white/10
                                 flex items-center justify-center">
@@ -187,15 +187,15 @@
 
                 <!-- PREDICTION -->
                 <a href="/classification/prediction"
-                   class="flex items-center gap-4 px-4 py-3 rounded-2xl
-                   transition-all duration-300
+                class="flex items-center gap-4 px-4 py-3 rounded-2xl
+                transition-all duration-300
 
-                   {% if request.path.startswith('/classification/prediction') %}
-                   bg-emerald-500 shadow-lg shadow-emerald-500/20
-                   {% else %}
-                   hover:bg-gray-800
-                   {% endif %}
-                   ">
+                {% if request.path.startswith('/classification/prediction') %}
+                bg-emerald-500 shadow-lg shadow-emerald-500/20
+                {% else %}
+                hover:bg-gray-800
+                {% endif %}
+                ">
 
                     <div class="w-11 h-11 rounded-xl bg-white/10
                                 flex items-center justify-center">
@@ -212,15 +212,15 @@
 
                 <!-- EVALUATION -->
                 <a href="/classification/evaluation"
-                   class="flex items-center gap-4 px-4 py-3 rounded-2xl
-                   transition-all duration-300
+                class="flex items-center gap-4 px-4 py-3 rounded-2xl
+                transition-all duration-300
 
-                   {% if request.path.startswith('/classification/evaluation') %}
-                   bg-emerald-500 shadow-lg shadow-emerald-500/20
-                   {% else %}
-                   hover:bg-gray-800
-                   {% endif %}
-                   ">
+                {% if request.path.startswith('/classification/evaluation') %}
+                bg-emerald-500 shadow-lg shadow-emerald-500/20
+                {% else %}
+                hover:bg-gray-800
+                {% endif %}
+                ">
 
                     <div class="w-11 h-11 rounded-xl bg-white/10
                                 flex items-center justify-center">
@@ -235,35 +235,10 @@
 
                 </a>
 
-                <!-- CONFUSION MATRIX -->
-                <a href="/classification/confusion-matrix"
-                   class="flex items-center gap-4 px-4 py-3 rounded-2xl
-                   transition-all duration-300
-
-                   {% if request.path.startswith('/classification/confusion-matrix') %}
-                   bg-emerald-500 shadow-lg shadow-emerald-500/20
-                   {% else %}
-                   hover:bg-gray-800
-                   {% endif %}
-                   ">
-
-                    <div class="w-11 h-11 rounded-xl bg-white/10
-                                flex items-center justify-center">
-
-                        <i class="fa-solid fa-table-cells text-red-300"></i>
-
-                    </div>
-
-                    <span class="font-semibold">
-                        Confusion Matrix
-                    </span>
-
-                </a>
-
             </div>
 
         </div>
-
+        
     </nav>
 
     <!-- LOGOUT -->

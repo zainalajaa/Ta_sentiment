@@ -2,100 +2,174 @@
 
 {% block content %}
 
+<!-- HEADER -->
+
 <div class="bg-white rounded-3xl shadow-lg p-6 mb-6">
 
-    <h1 class="text-3xl font-bold text-gray-800 mb-2">
-        Hasil Prediksi Naïve Bayes
-    </h1>
+```
+<h1 class="text-3xl font-bold text-gray-800 mb-2">
+    Hasil Prediksi Naïve Bayes
+</h1>
 
-    <p class="text-gray-500">
-        Hasil klasifikasi data testing menggunakan
-        Multinomial Naïve Bayes.
-    </p>
+<p class="text-gray-500">
+    Hasil klasifikasi data testing menggunakan
+    Multinomial Naïve Bayes.
+</p>
+```
 
 </div>
 
-<div class="bg-white rounded-3xl shadow-lg p-6 overflow-auto">
+<!-- STATISTIK -->
 
-    <table class="min-w-full text-sm">
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
 
-        <thead>
+```
+<div class="bg-white rounded-3xl shadow-lg p-6">
 
-            <tr class="bg-gray-100">
+    <p class="text-sm text-gray-500">
+        Total Data Testing
+    </p>
 
-                <th class="px-4 py-3 border">
-                    No
-                </th>
+    <h2 class="text-4xl font-bold text-indigo-600 mt-3">
+        {{ results|length }}
+    </h2>
 
-                <th class="px-4 py-3 border">
-                    Text
-                </th>
+</div>
 
-                <th class="px-4 py-3 border">
-                    Actual
-                </th>
+<div class="bg-white rounded-3xl shadow-lg p-6">
 
-                <th class="px-4 py-3 border">
-                    Prediction
-                </th>
+    <p class="text-sm text-gray-500">
+        Prediksi Positif
+    </p>
 
-            </tr>
+    <h2 class="text-4xl font-bold text-emerald-600 mt-3">
+        {{ results | selectattr('prediction', 'equalto', 'positif') | list | length }}
+    </h2>
 
-        </thead>
+</div>
 
-        <tbody>
+<div class="bg-white rounded-3xl shadow-lg p-6">
 
-            {% for item in results %}
+    <p class="text-sm text-gray-500">
+        Prediksi Negatif
+    </p>
 
-            <tr>
+    <h2 class="text-4xl font-bold text-red-600 mt-3">
+        {{ results | selectattr('prediction', 'equalto', 'negatif') | list | length }}
+    </h2>
 
-                <td class="px-4 py-3 border">
-                    {{ loop.index }}
-                </td>
+</div>
+```
 
-                <td class="px-4 py-3 border">
-                    {{ item.text }}
-                </td>
+</div>
 
-                <td class="px-4 py-3 border">
+<!-- TABEL -->
 
-                    <span class="
-                        px-3 py-1 rounded-xl text-sm
+<div class="bg-white rounded-3xl shadow-lg p-6">
 
-                        {% if item.actual == 'positif' %}
-                            bg-emerald-100 text-emerald-700
-                        {% else %}
-                            bg-red-100 text-red-700
-                        {% endif %}
-                    ">
-                        {{ item.actual }}
-                    </span>
+```
+<div class="mb-4">
 
-                </td>
+    <h2 class="text-xl font-bold text-gray-800">
+        Detail Hasil Prediksi
+    </h2>
 
-                <td class="px-4 py-3 border">
+</div>
 
-                    <span class="
-                        px-3 py-1 rounded-xl text-sm
+<div class="overflow-x-auto">
 
-                        {% if item.prediction == 'positif' %}
-                            bg-blue-100 text-blue-700
-                        {% else %}
-                            bg-orange-100 text-orange-700
-                        {% endif %}
-                    ">
-                        {{ item.prediction }}
-                    </span>
+    <div class="max-h-[650px] overflow-y-auto border rounded-2xl">
 
-                </td>
+        <table class="min-w-full text-sm">
 
-            </tr>
+            <thead class="sticky top-0 z-10">
 
-            {% endfor %}
+                <tr class="bg-gray-100">
 
-        </tbody>
+                    <th class="px-4 py-3 border font-semibold bg-gray-100 sticky left-0 z-20">
+                        No
+                    </th>
 
-    </table>
+                    <th class="px-4 py-3 border font-semibold bg-gray-100">
+                        Text
+                    </th>
+
+                    <th class="px-4 py-3 border font-semibold bg-gray-100">
+                        Actual
+                    </th>
+
+                    <th class="px-4 py-3 border font-semibold bg-gray-100">
+                        Prediction
+                    </th>
+
+                </tr>
+
+            </thead>
+
+            <tbody>
+
+                {% for item in results %}
+
+                <tr class="hover:bg-gray-50">
+
+                    <td class="px-4 py-3 border bg-white sticky left-0 font-medium">
+                        {{ loop.index }}
+                    </td>
+
+                    <td class="px-4 py-3 border">
+
+                        <div class="max-w-3xl whitespace-normal break-words text-gray-700">
+
+                            {{ item.text }}
+
+                        </div>
+
+                    </td>
+
+                    <td class="px-4 py-3 border text-center">
+
+                        <span class="
+                            px-3 py-1 rounded-xl text-sm font-medium
+
+                            {% if item.actual == 'positif' %}
+                                bg-emerald-100 text-emerald-700
+                            {% else %}
+                                bg-red-100 text-red-700
+                            {% endif %}
+                        ">
+                            {{ item.actual }}
+                        </span>
+
+                    </td>
+
+                    <td class="px-4 py-3 border text-center">
+
+                        <span class="
+                            px-3 py-1 rounded-xl text-sm font-medium
+
+                            {% if item.prediction == 'positif' %}
+                                bg-blue-100 text-blue-700
+                            {% else %}
+                                bg-orange-100 text-orange-700
+                            {% endif %}
+                        ">
+                            {{ item.prediction }}
+                        </span>
+
+                    </td>
+
+                </tr>
+
+                {% endfor %}
+
+            </tbody>
+
+        </table>
+
+    </div>
+
+</div>
+```
 
 </div>
 

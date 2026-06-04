@@ -13,6 +13,7 @@ import string
 import nltk
 import pandas as pd
 import numpy as np
+from flask import url_for
 
 from flask import (
     Flask,
@@ -152,21 +153,22 @@ def admin_required(f):
 @app.route("/register", methods=["GET", "POST"])
 def register():
 
+    # Jika sudah login
     if session.get("login"):
-        return redirect("/")
+        return redirect(url_for("index"))
 
     if request.method == "POST":
 
-        username = request.form["username"]
-        email = request.form["email"]
+        username = request.form["username"].strip()
+        email = request.form["email"].strip()
         password = request.form["password"]
 
         conn = get_connection()
         cursor = conn.cursor()
 
-        # cek email
+        # Cek email
         cursor.execute(
-            "SELECT id FROM users WHERE email=%s",
+            "SELECT id FROM users WHERE email = %s",
             (email,)
         )
 
@@ -182,17 +184,15 @@ def register():
                 error="Email sudah terdaftar"
             )
 
-        # hash password
+        # Hash password
         hashed_password = generate_password_hash(password)
 
-        # insert user baru
-        query = """
-        INSERT INTO users
-        (username, email, password, role)
-        VALUES (%s, %s, %s, %s)
-        """
-
-        cursor.execute(query, (
+        # Simpan user baru
+        cursor.execute("""
+            INSERT INTO users
+            (username, email, password, role)
+            VALUES (%s, %s, %s, %s)
+        """, (
             username,
             email,
             hashed_password,
@@ -204,7 +204,12 @@ def register():
         cursor.close()
         conn.close()
 
-        return redirect("/login")
+        flash(
+            "Registrasi berhasil, silakan login.",
+            "success"
+        )
+
+        return redirect(url_for("login"))
 
     return render_template("public/register.html")
 
@@ -215,35 +220,34 @@ def register():
 @app.route("/login", methods=["GET", "POST"])
 def login():
 
-    # jika sudah login
+    # Jika sudah login
     if session.get("login"):
 
         if session.get("role") == "admin":
-            return redirect("/dashboard")
+            return redirect(url_for("dashboard"))
 
-        return redirect("/")
+        return redirect(url_for("index"))
 
     if request.method == "POST":
 
-        email = request.form["email"]
+        email = request.form["email"].strip()
         password = request.form["password"]
 
         conn = get_connection()
         cursor = conn.cursor()
 
-        query = """
-        SELECT id, username, email, password, role
-        FROM users
-        WHERE email=%s
-        """
+        cursor.execute("""
+            SELECT id, username, email, password, role
+            FROM users
+            WHERE email = %s
+        """, (email,))
 
-        cursor.execute(query, (email,))
         user = cursor.fetchone()
 
         cursor.close()
         conn.close()
 
-        # email tidak ditemukan
+        # Email tidak ditemukan
         if not user:
 
             return render_template(
@@ -251,7 +255,7 @@ def login():
                 error="Email tidak terdaftar"
             )
 
-        # password salah
+        # Password salah
         if not check_password_hash(user[3], password):
 
             return render_template(
@@ -259,21 +263,20 @@ def login():
                 error="Password salah"
             )
 
-        # login berhasil
+        # Login berhasil
         session["login"] = True
         session["user_id"] = user[0]
         session["username"] = user[1]
         session["email"] = user[2]
         session["role"] = user[4]
 
-        # redirect role
+        # Redirect berdasarkan role
         if user[4] == "admin":
-            return redirect("/dashboard")
+            return redirect(url_for("dashboard"))
 
-        return redirect("/")
+        return redirect(url_for("index"))
 
     return render_template("public/login.html")
-
 
 # =====================================================
 # LOGOUT
@@ -283,7 +286,7 @@ def logout():
 
     session.clear()
 
-    return redirect("/login")
+    return redirect("/sentiment")
 
 
 # =====================================================
@@ -324,33 +327,211 @@ def forgot_password():
 
     return render_template("public/forgot_password.html")
 
+# =====================================================
+# HALAMAN PROFILE PUBLIK
+# =====================================================
+@app.route('/user-profile')
+def public_profile():
+
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    return render_template(
+        'public/profile.html'
+    )
+
+
+# =====================================================
+# EDIT PROFILE PUBLIK
+# =====================================================
+
+@app.route('/user-profile/update', methods=['POST'])
+@login_required
+def update_public_profile():
+
+    username = request.form['username'].strip()
+    email = request.form['email'].strip()
+
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT id
+        FROM users
+        WHERE email=%s
+        AND id != %s
+    """, (
+        email,
+        session['user_id']
+    ))
+
+    existing_user = cursor.fetchone()
+
+    if existing_user:
+
+        cursor.close()
+        conn.close()
+
+        flash(
+            'Email sudah digunakan oleh pengguna lain.',
+            'error'
+        )
+
+        return redirect(
+            url_for('public_profile')
+        )
+
+    cursor.execute("""
+        UPDATE users
+        SET username=%s,
+            email=%s
+        WHERE id=%s
+    """, (
+        username,
+        email,
+        session['user_id']
+    ))
+
+    conn.commit()
+
+    cursor.close()
+    conn.close()
+
+    session['username'] = username
+    session['email'] = email
+
+    flash(
+        'Profil berhasil diperbarui.',
+        'success'
+    )
+
+    return redirect(
+        url_for('public_profile')
+    )
+
+# =====================================================
+# EDIT PASSWORD PROFILE PUBLIK
+# =====================================================
+
+@app.route('/user-profile/change-password', methods=['POST'])
+@login_required
+def change_public_password():
+
+    old_password = request.form['old_password'].strip()
+    new_password = request.form['new_password'].strip()
+    confirm_password = request.form['confirm_password'].strip()
+
+    if new_password != confirm_password:
+
+        flash(
+            'Konfirmasi password tidak cocok.',
+            'error'
+        )
+
+        return redirect(
+            url_for('public_profile')
+        )
+
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT password
+        FROM users
+        WHERE id=%s
+    """, (
+        session['user_id'],
+    ))
+
+    user = cursor.fetchone()
+
+    if not user:
+
+        cursor.close()
+        conn.close()
+
+        flash(
+            'User tidak ditemukan.',
+            'error'
+        )
+
+        return redirect(
+            url_for('public_profile')
+        )
+
+    if not check_password_hash(
+        user[0],
+        old_password
+    ):
+
+        cursor.close()
+        conn.close()
+
+        flash(
+            'Password lama salah.',
+            'error'
+        )
+
+        return redirect(
+            url_for('public_profile')
+        )
+
+    hashed_password = generate_password_hash(
+        new_password
+    )
+
+    cursor.execute("""
+        UPDATE users
+        SET password=%s
+        WHERE id=%s
+    """, (
+        hashed_password,
+        session['user_id']
+    ))
+
+    conn.commit()
+
+    cursor.close()
+    conn.close()
+
+    flash(
+        'Password berhasil diubah.',
+        'success'
+    )
+
+    return redirect(
+        url_for('public_profile')
+    )
+
 
 # =====================================================
 # HALAMAN UTAMA ANALISIS
 # =====================================================
-@app.route("/", methods=["GET", "POST"])
-def index():
 
-    result = None
-    text = ""
-    scores = {}
+def process_sentiment_analysis(text):
+    """
+    Proses preprocessing, prediksi sentimen,
+    dan penyimpanan histori jika user login.
+    """
 
-    if request.method == "POST":
+    text = text.strip()
 
-        text = request.form["text"]
+    if not text:
+        return None, {}
 
-        # preprocessing
-        tokens = preprocess_text(text)
+    # preprocessing
+    tokens = preprocess_text(text)
 
-        # prediksi naive bayes
-        result_data = predict(tokens)
+    # prediksi
+    result_data = predict(tokens)
 
-        result = result_data["label"]
-        scores = result_data["scores"]
+    result = result_data["label"]
+    scores = result_data["scores"]
 
-        # simpan histori jika login
-        if session.get("login"):
+    # simpan histori jika login
+    if session.get("login"):
 
+        try:
             conn = get_connection()
             cursor = conn.cursor()
 
@@ -360,24 +541,389 @@ def index():
             VALUES (%s, %s, %s)
             """
 
-            cursor.execute(query, (
-                session.get("user_id"),
-                text,
-                result
-            ))
+            cursor.execute(
+                query,
+                (
+                    session.get("user_id"),
+                    text,
+                    result
+                )
+            )
 
             conn.commit()
 
+        except Exception as e:
+            print(f"Error simpan histori: {e}")
+
+        finally:
             cursor.close()
             conn.close()
 
+    return result, scores
+
+
+# =====================================================
+# HALAMAN UTAMA USER LOGIN
+# =====================================================
+@app.route("/", methods=["GET", "POST"])
+@login_required
+def index():
+
+    result = None
+    text = ""
+
+    scores = {}
+
+    positif_score = 0
+    negatif_score = 0
+
+    if request.method == "POST":
+
+        text = request.form.get(
+            "text",
+            ""
+        ).strip()
+
+        if text:
+
+            # =====================
+            # PREPROCESSING
+            # =====================
+
+            tokens = preprocess_text(
+                text
+            )
+
+            # =====================
+            # PREDIKSI
+            # =====================
+
+            result_data = predict(
+                tokens
+            )
+
+            result = result_data["label"]
+
+            scores = result_data["scores"]
+
+            positif_score = scores.get(
+                "positif",
+                0
+            )
+
+            negatif_score = scores.get(
+                "negatif",
+                0
+            )
+
+            # =====================
+            # SIMPAN HISTORI
+            # =====================
+
+            try:
+
+                conn = get_connection()
+                cursor = conn.cursor()
+
+                cursor.execute("""
+                    INSERT INTO hasil_analisis
+                    (
+                        user_id,
+                        teks,
+                        hasil
+                    )
+                    VALUES
+                    (
+                        %s,
+                        %s,
+                        %s
+                    )
+                """, (
+                    session["user_id"],
+                    text,
+                    result
+                ))
+
+                conn.commit()
+
+            except Exception as e:
+
+                print(
+                    f"Error simpan histori: {e}"
+                )
+
+            finally:
+
+                cursor.close()
+                conn.close()
+
     return render_template(
         "public/index.html",
+
         result=result,
         text=text,
+
         scores=scores,
+
+        positif_score=positif_score,
+        negatif_score=negatif_score,
+
         role=session.get("role")
     )
+
+
+# =====================================================
+# HALAMAN FREE USER
+# =====================================================
+@app.route("/sentiment", methods=["GET", "POST"])
+def sentiment():
+
+    result = None
+    text = ""
+
+    scores = {}
+
+    positif_score = 0
+    negatif_score = 0
+
+    if request.method == "POST":
+
+        text = request.form.get(
+            "review",
+            ""
+        ).strip()
+
+        if text:
+
+            tokens = preprocess_text(
+                text
+            )
+
+            result_data = predict(
+                tokens
+            )
+
+            result = result_data["label"]
+
+            scores = result_data["scores"]
+
+            positif_score = scores.get(
+                "positif",
+                0
+            )
+
+            negatif_score = scores.get(
+                "negatif",
+                0
+            )
+
+    return render_template(
+        "public/sentiment.html",
+
+        result=result,
+        text=text,
+
+        scores=scores,
+
+        positif_score=positif_score,
+        negatif_score=negatif_score,
+
+        role=session.get("role")
+    )
+
+
+
+# =====================================================
+# ABOUT SYSTEM
+# =====================================================
+
+@app.route('/about')
+def about():
+    return render_template(
+        'public/about.html'
+    )
+
+
+
+# =========================================
+# PREPROCESSING UNTUK PREDIKSI USER
+# =========================================
+# =========================================
+# PREPROCESSING UNTUK PREDIKSI PUBLIK
+# =========================================
+
+def preprocess_text(text):
+
+    # CASE FOLDING
+    text = text.lower()
+
+    # CLEANING
+    text = re.sub(r'http\S+', '', text)
+    text = re.sub(r'@\w+', '', text)
+    text = re.sub(r'#\w+', '', text)
+
+    text = re.sub(r'\d+', '', text)
+
+    text = re.sub(
+        r'[^a-zA-Z\s]',
+        ' ',
+        text
+    )
+
+    text = re.sub(
+        r'\s+',
+        ' ',
+        text
+    ).strip()
+
+    # TOKENIZING
+    tokens = word_tokenize(text)
+
+    # NORMALISASI
+    normalization_dict = {
+
+        "gk": "tidak",
+        "ga": "tidak",
+        "nggak": "tidak",
+        "tdk": "tidak",
+
+        "apk": "aplikasi",
+
+        "bgt": "banget",
+        "bgtt": "banget",
+
+        "sy": "saya",
+        "gw": "saya",
+
+        "dgn": "dengan",
+
+        "udh": "sudah",
+        "blm": "belum",
+
+        "jg": "juga",
+
+        "trs": "terus",
+
+        "jls": "jelas"
+    }
+
+    normalized_words = []
+
+    for word in tokens:
+
+        normalized_words.append(
+            normalization_dict.get(
+                word,
+                word
+            )
+        )
+
+    # STOPWORD KHUSUS
+    negasi = [
+        'tidak',
+        'bukan',
+        'jangan',
+        'belum',
+        'kurang'
+    ]
+
+    custom_stopwords = [
+        word
+        for word in stop_words
+        if word not in negasi
+    ]
+
+    filtered_words = []
+
+    for word in normalized_words:
+
+        if word not in custom_stopwords:
+
+            filtered_words.append(word)
+
+    # STEMMING
+    stemmed_words = []
+
+    for word in filtered_words:
+
+        stemmed_words.append(
+            stemmer.stem(word)
+        )
+
+    return stemmed_words
+
+
+# =========================================
+# TRAIN MODEL
+# =========================================
+
+def train_model():
+
+    X_train, X_test, y_train, y_test = get_split_data()
+
+    vectorizer = get_vectorizer()
+
+    X_train_tfidf = vectorizer.fit_transform(
+        X_train
+    )
+
+    model = MultinomialNB()
+
+    model.fit(
+        X_train_tfidf,
+        y_train
+    )
+
+    return model, vectorizer
+
+
+# =========================================
+# PREDICT SENTIMENT
+# =========================================
+
+def predict(tokens):
+
+    if not tokens:
+
+        return {
+            "label": "-",
+            "scores": {}
+        }
+
+    model, vectorizer = train_model()
+
+    text = " ".join(tokens)
+
+    input_tfidf = vectorizer.transform(
+        [text]
+    )
+
+    prediction = model.predict(
+        input_tfidf
+    )[0]
+
+    probabilities = model.predict_proba(
+        input_tfidf
+    )[0]
+
+    classes = model.classes_
+
+    scores = {}
+
+    for i, label in enumerate(classes):
+
+        scores[str(label)] = float(
+            round(
+                probabilities[i] * 100,
+                2
+            )
+        )
+
+    return {
+        "label": prediction,
+        "scores": scores
+    }
+
 
 
 # =====================================================
@@ -387,16 +933,18 @@ def index():
 @admin_required
 def dashboard():
 
+
     conn = get_connection()
     cursor = conn.cursor()
 
     # ======================
-    # DATASET
+    # TOTAL DATASET DIGUNAKAN
     # ======================
 
     cursor.execute("""
         SELECT COUNT(*)
         FROM preprocessing
+        WHERE label IN ('positif', 'negatif')
     """)
 
     total_dataset = cursor.fetchone()[0]
@@ -408,7 +956,7 @@ def dashboard():
     cursor.execute("""
         SELECT COUNT(*)
         FROM preprocessing
-        WHERE label='positif'
+        WHERE label = 'positif'
     """)
 
     total_positif = cursor.fetchone()[0]
@@ -420,10 +968,22 @@ def dashboard():
     cursor.execute("""
         SELECT COUNT(*)
         FROM preprocessing
-        WHERE label='negatif'
+        WHERE label = 'negatif'
     """)
 
     total_negatif = cursor.fetchone()[0]
+
+    # ======================
+    # NETRAL
+    # ======================
+
+    cursor.execute("""
+        SELECT COUNT(*)
+        FROM preprocessing
+        WHERE label = 'netral'
+    """)
+
+    total_netral = cursor.fetchone()[0]
 
     # ======================
     # HASIL ANALISIS
@@ -451,21 +1011,42 @@ def dashboard():
         test_count = len(X_test)
 
         # ======================
-        # TFIDF
+        # RASIO SPLIT
         # ======================
 
-        vectorizer = TfidfVectorizer()
+        test_size = session.get('test_size', 0.2)
+
+        split_ratio_map = {
+            0.1: '90 : 10',
+            0.2: '80 : 20',
+            0.3: '70 : 30',
+            0.4: '60 : 40'
+        }
+
+        split_ratio = split_ratio_map.get(
+            test_size,
+            '80 : 20'
+        )
+
+        # ======================
+        # TF-IDF
+        # ======================
+
+        vectorizer = get_vectorizer()
 
         X_train_tfidf = vectorizer.fit_transform(X_train)
         X_test_tfidf = vectorizer.transform(X_test)
 
         # ======================
-        # NBC
+        # NAÏVE BAYES
         # ======================
 
         model = MultinomialNB()
 
-        model.fit(X_train_tfidf, y_train)
+        model.fit(
+            X_train_tfidf,
+            y_train
+        )
 
         predictions = model.predict(X_test_tfidf)
 
@@ -474,7 +1055,10 @@ def dashboard():
         # ======================
 
         accuracy = round(
-            accuracy_score(y_test, predictions) * 100,
+            accuracy_score(
+                y_test,
+                predictions
+            ) * 100,
             2
         )
 
@@ -482,7 +1066,8 @@ def dashboard():
             precision_score(
                 y_test,
                 predictions,
-                average='weighted'
+                average='weighted',
+                zero_division=0
             ) * 100,
             2
         )
@@ -491,7 +1076,8 @@ def dashboard():
             recall_score(
                 y_test,
                 predictions,
-                average='weighted'
+                average='weighted',
+                zero_division=0
             ) * 100,
             2
         )
@@ -500,12 +1086,13 @@ def dashboard():
             f1_score(
                 y_test,
                 predictions,
-                average='weighted'
+                average='weighted',
+                zero_division=0
             ) * 100,
             2
         )
 
-    except:
+    except Exception:
 
         train_count = 0
         test_count = 0
@@ -515,22 +1102,30 @@ def dashboard():
         recall = 0
         f1_score_value = 0
 
+        split_ratio = '-'
+
     return render_template(
         'admin/main/dashboard.html',
 
         total_dataset=total_dataset,
         total_positif=total_positif,
         total_negatif=total_negatif,
+        total_netral=total_netral,
+
         total_prediksi=total_prediksi,
 
         train_count=train_count,
         test_count=test_count,
+
+        split_ratio=split_ratio,
 
         accuracy=accuracy,
         precision=precision,
         recall=recall,
         f1_score=f1_score_value
     )
+
+
 
 
 @app.route('/profile')
@@ -673,7 +1268,6 @@ def change_password():
 # =====================================================
 # MANAJEMEN USER
 # =====================================================
-@app.route("/users")
 @app.route("/users")
 @admin_required 
 def users():
@@ -1093,17 +1687,23 @@ def import_data():
         content = row['content']
         score = row['score']
 
+        # Skip data kosong
+        if pd.isna(content) or pd.isna(score):
+            continue
+
+        content = str(content).strip()
+
+        if content == "":
+            continue
+
         # KONVERSI SCORE → SENTIMEN
         if score >= 4:
-
             label = 'positif'
 
         elif score == 3:
-
             label = 'netral'
 
         else:
-
             label = 'negatif'
 
         cursor.execute(
@@ -1221,7 +1821,9 @@ def process_preprocessing():
 
             "jg": "juga",
 
-            "trs": "terus"
+            "trs": "terus",
+
+            "jls":"jelas"
 
         }
 
@@ -1298,6 +1900,8 @@ def process_preprocessing():
     return redirect('/preprocessing')
 
 
+
+
 @app.route('/preprocessing/delete-all')
 @admin_required
 def delete_all():
@@ -1305,16 +1909,32 @@ def delete_all():
     conn = get_connection()
     cursor = conn.cursor()
 
-    cursor.execute(
-        "DELETE FROM preprocessing"
-    )
+    try:
 
-    conn.commit()
+        cursor.execute(
+            "TRUNCATE TABLE preprocessing"
+        )
 
-    cursor.close()
-    conn.close()
+        conn.commit()
 
-    flash('Semua data preprocessing berhasil dihapus')
+        flash(
+            'Semua data preprocessing berhasil dihapus',
+            'success'
+        )
+
+    except Exception as e:
+
+        conn.rollback()
+
+        flash(
+            f'Gagal menghapus data: {str(e)}',
+            'error'
+        )
+
+    finally:
+
+        cursor.close()
+        conn.close()
 
     return redirect('/preprocessing')
 
@@ -1330,11 +1950,54 @@ def split_data():
     conn = get_connection()
     cursor = conn.cursor()
 
+    # ==========================================
+    # STATISTIK DATASET AWAL
+    # ==========================================
+
+    cursor.execute("""
+        SELECT label, COUNT(*)
+        FROM preprocessing
+        GROUP BY label
+    """)
+
+    label_stats = cursor.fetchall()
+
+    positif_count = 0
+    negatif_count = 0
+    netral_count = 0
+
+    for label, total in label_stats:
+
+        if label == 'positif':
+            positif_count = total
+
+        elif label == 'negatif':
+            negatif_count = total
+
+        elif label == 'netral':
+            netral_count = total
+
+    total_dataset = (
+        positif_count +
+        negatif_count +
+        netral_count
+    )
+
+    total_used = (
+        positif_count +
+        negatif_count
+    )
+
+    # ==========================================
+    # DATA YANG DIGUNAKAN MODEL
+    # ==========================================
+
     cursor.execute("""
         SELECT stemming, label
         FROM preprocessing
         WHERE stemming IS NOT NULL
         AND stemming != ''
+        AND label IN ('positif', 'negatif')
     """)
 
     data = cursor.fetchall()
@@ -1370,13 +2033,58 @@ def split_data():
         # SIMPAN KE SESSION
         session['test_size'] = test_size
 
-    X_train, X_test, y_train, y_test = train_test_split(
-        texts,
-        labels,
-        test_size=test_size,
-        random_state=42,
-        stratify=labels
-    )
+    # ==========================================
+    # VALIDASI DATASET
+    # ==========================================
+
+    total_data = len(texts)
+    jumlah_kelas = len(set(labels))
+
+    if total_data < 30:
+
+        flash(
+            'Dataset terlalu sedikit. '
+            'Minimal 30 data diperlukan untuk melakukan split dataset dan klasifikasi.',
+            'warning'
+        )
+
+        return redirect('/preprocessing')
+
+    test_count = round(total_data * test_size)
+
+    if test_count < jumlah_kelas:
+
+        flash(
+            f'Jumlah data testing hanya {test_count}, '
+            f'sedangkan terdapat {jumlah_kelas} kelas sentimen. '
+            f'Silakan tambahkan dataset atau gunakan rasio split yang lebih besar.',
+            'warning'
+        )
+
+        return redirect('/preprocessing')
+
+    # ==========================================
+    # SPLIT DATA
+    # ==========================================
+
+    try:
+
+        X_train, X_test, y_train, y_test = train_test_split(
+            texts,
+            labels,
+            test_size=test_size,
+            random_state=42,
+            stratify=labels
+        )
+
+    except ValueError as e:
+
+        flash(
+            f'Gagal melakukan split data: {str(e)}',
+            'danger'
+        )
+
+        return redirect('/preprocessing')
 
     train_data = list(zip(y_train, X_train))
     test_data = list(zip(y_test, X_test))
@@ -1389,10 +2097,15 @@ def split_data():
         train_data=train_data,
         test_data=test_data,
         training_ratio=training_ratio,
-        testing_ratio=testing_ratio
+        testing_ratio=testing_ratio,
+
+        positif_count=positif_count,
+        negatif_count=negatif_count,
+        netral_count=netral_count,
+
+        total_dataset=total_dataset,
+        total_used=total_used
     )
-
-
 # =====================================================
 # HASIL KLASIFIKASI
 # =====================================================
@@ -1400,6 +2113,7 @@ def split_data():
 # =========================================
 # HELPER FUNCTION
 # =========================================
+
 
 def get_split_data():
 
@@ -1413,6 +2127,7 @@ def get_split_data():
         FROM preprocessing
         WHERE stemming IS NOT NULL
         AND stemming != ''
+        AND label IN ('positif', 'negatif')
     """)
 
     data = cursor.fetchall()
@@ -1438,19 +2153,98 @@ def get_split_data():
 # TFIDF
 # =========================================
 
-@app.route('/classification/tfidf')
-@admin_required
-def tfidf():
+# =========================================
+# TF-IDF CONFIG
+# =========================================
 
-    X_train, X_test, y_train, y_test = get_split_data()
+def get_vectorizer():
 
-    vectorizer = TfidfVectorizer(
+    return TfidfVectorizer(
         ngram_range=(1,2),
         min_df=2,
         max_df=0.9,
         max_features=5000,
         sublinear_tf=True
     )
+
+# =========================================
+# TRAIN MODEL NBC
+# =========================================
+
+def train_model():
+
+    X_train, X_test, y_train, y_test = get_split_data()
+
+    vectorizer = get_vectorizer()
+
+    X_train_tfidf = vectorizer.fit_transform(
+        X_train
+    )
+
+    model = MultinomialNB()
+
+    model.fit(
+        X_train_tfidf,
+        y_train
+    )
+
+    return model, vectorizer
+
+
+# =========================================
+# PREDICT SENTIMENT
+# =========================================
+
+def predict(tokens):
+
+    if not tokens:
+
+        return {
+            "label": "-",
+            "scores": {}
+        }
+
+    model, vectorizer = train_model()
+
+    text = " ".join(tokens)
+
+    input_tfidf = vectorizer.transform(
+        [text]
+    )
+
+    prediction = model.predict(
+        input_tfidf
+    )[0]
+
+    probabilities = model.predict_proba(
+        input_tfidf
+    )[0]
+
+    classes = model.classes_
+
+    scores = {}
+
+    for i, label in enumerate(classes):
+
+        scores[label] = round(
+            probabilities[i] * 100,
+            2
+        )
+
+    return {
+        "label": prediction,
+        "scores": scores
+    }
+
+
+
+@app.route('/classification/tfidf')
+@admin_required
+def tfidf():
+
+    X_train, X_test, y_train, y_test = get_split_data()
+
+    vectorizer = get_vectorizer()
 
     # TRAINING
     X_train_tfidf = vectorizer.fit_transform(X_train)
@@ -1483,7 +2277,7 @@ def prediction():
 
     X_train, X_test, y_train, y_test = get_split_data()
 
-    vectorizer = TfidfVectorizer()
+    vectorizer = get_vectorizer()
 
     X_train_tfidf = vectorizer.fit_transform(X_train)
     X_test_tfidf = vectorizer.transform(X_test)
@@ -1514,21 +2308,51 @@ def prediction():
 @admin_required
 def evaluation():
 
+    # Dataset Split
     X_train, X_test, y_train, y_test = get_split_data()
 
-    vectorizer = TfidfVectorizer()
+    # Filter hanya Positif dan Negatif
+    train_data = [
+        (x, y)
+        for x, y in zip(X_train, y_train)
+        if y in ['positif', 'negatif']
+    ]
+
+    test_data = [
+        (x, y)
+        for x, y in zip(X_test, y_test)
+        if y in ['positif', 'negatif']
+    ]
+
+    X_train = [x for x, y in train_data]
+    y_train = [y for x, y in train_data]
+
+    X_test = [x for x, y in test_data]
+    y_test = [y for x, y in test_data]
+
+    # TF-IDF
+    vectorizer = get_vectorizer()
 
     X_train_tfidf = vectorizer.fit_transform(X_train)
     X_test_tfidf = vectorizer.transform(X_test)
 
+    # Training Model
     model = MultinomialNB()
 
-    model.fit(X_train_tfidf, y_train)
+    model.fit(
+        X_train_tfidf,
+        y_train
+    )
 
+    # Prediksi
     predictions = model.predict(X_test_tfidf)
 
+    # Evaluation Metrics
     accuracy = round(
-        accuracy_score(y_test, predictions) * 100,
+        accuracy_score(
+            y_test,
+            predictions
+        ) * 100,
         2
     )
 
@@ -1536,7 +2360,8 @@ def evaluation():
         precision_score(
             y_test,
             predictions,
-            average='weighted'
+            average='weighted',
+            zero_division=0
         ) * 100,
         2
     )
@@ -1545,18 +2370,32 @@ def evaluation():
         recall_score(
             y_test,
             predictions,
-            average='weighted'
+            average='weighted',
+            zero_division=0
         ) * 100,
         2
     )
 
-    f1 = round(
+    f1_score_value = round(
         f1_score(
             y_test,
             predictions,
-            average='weighted'
+            average='weighted',
+            zero_division=0
         ) * 100,
         2
+    )
+
+    # Confusion Matrix 2 Kelas
+    labels = [
+        'positif',
+        'negatif'
+    ]
+
+    cm = confusion_matrix(
+        y_test,
+        predictions,
+        labels=labels
     )
 
     return render_template(
@@ -1564,74 +2403,10 @@ def evaluation():
         accuracy=accuracy,
         precision=precision,
         recall=recall,
-        f1_score=f1
-    )
-
-@app.route('/classification/confusion-matrix')
-@admin_required
-def confusion_matrix_page():
-
-    X_train, X_test, y_train, y_test = get_split_data()
-
-    vectorizer = TfidfVectorizer()
-
-    X_train_tfidf = vectorizer.fit_transform(X_train)
-    X_test_tfidf = vectorizer.transform(X_test)
-
-    model = MultinomialNB()
-
-    model.fit(X_train_tfidf, y_train)
-
-    predictions = model.predict(X_test_tfidf)
-
-    cm = confusion_matrix(
-        y_test,
-        predictions,
-        labels=['positif', 'negatif']
-    )
-
-    tp = cm[0][0]
-    fn = cm[0][1]
-    fp = cm[1][0]
-    tn = cm[1][1]
-
-    return render_template(
-        'admin/classification/confusion_matrix.html',
-        tp=tp,
-        fn=fn,
-        fp=fp,
-        tn=tn
+        f1_score=f1_score_value,
+        cm=cm.tolist()
     )
 
 
-
-
-
-# =====================================================
-# HAPUS HASIL
-# =====================================================
-@app.route("/hapus/<int:id>")
-@admin_required
-def hapus(id):
-
-    conn = get_connection()
-    cursor = conn.cursor()
-
-    cursor.execute(
-        "DELETE FROM hasil_analisis WHERE id=%s",
-        (id,)
-    )
-
-    conn.commit()
-
-    cursor.close()
-    conn.close()
-
-    return redirect("/result")
-
-
-# =====================================================
-# RUN APP
-# =====================================================
 if __name__ == "__main__":
     app.run(debug=True)

@@ -1,0 +1,287 @@
+{% extends 'layouts/public_base.html' %}
+
+{% block title %}
+Profil Saya
+{% endblock %}
+
+{% block content %}
+
+<section class="hero-bg min-h-screen pt-28 pb-16">
+
+    <div class="max-w-5xl mx-auto px-6">
+
+        <!-- PROFILE HEADER -->
+        <div class="glass rounded-3xl overflow-hidden">
+
+            <div class="h-40 bg-gradient-to-r from-emerald-500 via-emerald-600 to-cyan-600"></div>
+
+            <div class="px-8 pb-8">
+
+                <div class="-mt-16 flex flex-col items-center">
+
+                    <div class="w-32 h-32 rounded-full bg-slate-900 border-4 border-white/10 flex items-center justify-center">
+
+                        <span class="text-5xl font-bold text-emerald-400">
+                            {{ session.get('username', 'U')[0]|upper }}
+                        </span>
+
+                    </div>
+
+                    <h1 class="mt-4 text-3xl font-bold">
+                        {{ session.get('username', 'Pengguna') }}
+                    </h1>
+
+                    <p class="text-slate-400 mt-2">
+                        {{ session.get('email', '-') }}
+                    </p>
+
+                    <span class="mt-4 px-4 py-2 rounded-full bg-emerald-500/20 text-emerald-400 text-sm">
+                        Pengguna Sistem
+                    </span>
+
+                </div>
+
+            </div>
+
+        </div>
+
+        <!-- INFORMASI AKUN -->
+        <div class="grid md:grid-cols-2 gap-6 mt-8">
+
+            <div class="glass rounded-2xl p-6">
+
+                <p class="text-slate-400 text-sm">
+                    Username
+                </p>
+
+                <h3 class="mt-2 text-xl font-semibold">
+                    {{ session.get('username', '-') }}
+                </h3>
+
+            </div>
+
+            <div class="glass rounded-2xl p-6">
+
+                <p class="text-slate-400 text-sm">
+                    Email
+                </p>
+
+                <h3 class="mt-2 text-xl font-semibold break-all">
+                    {{ session.get('email', '-') }}
+                </h3>
+
+            </div>
+
+            <div class="glass rounded-2xl p-6">
+
+                <p class="text-slate-400 text-sm">
+                    Role
+                </p>
+
+                <h3 class="mt-2 text-xl font-semibold">
+                    {{ session.get('role', 'User') }}
+                </h3>
+
+            </div>
+
+            <div class="glass rounded-2xl p-6">
+
+                <p class="text-slate-400 text-sm">
+                    Status
+                </p>
+
+                <span class="inline-block mt-2 px-4 py-2 rounded-full bg-green-500/20 text-green-400">
+                    Aktif
+                </span>
+
+            </div>
+
+        </div>
+
+        <div class="grid md:grid-cols-2 gap-6 mt-8">
+
+            <button
+                type="button"
+                onclick="openEditProfileModal()"
+                class="glass rounded-2xl p-6 text-left hover:border-emerald-500 transition">
+
+                <h3 class="text-xl font-semibold">
+                    Edit Profil
+                </h3>
+
+                <p class="text-slate-400 mt-3">
+                    Perbarui username dan email akun Anda.
+                </p>
+
+            </button>
+
+            <button
+                type="button"
+                onclick="openChangePasswordModal()"
+                class="glass rounded-2xl p-6 text-left hover:border-yellow-500 transition">
+
+                <h3 class="text-xl font-semibold">
+                    Ubah Password
+                </h3>
+
+                <p class="text-slate-400 mt-3">
+                    Ganti password untuk meningkatkan keamanan akun.
+                </p>
+
+            </button>
+
+        </div>
+    </div>
+
+</section>
+
+<div id="editProfileModal"
+     class="fixed inset-0 hidden items-center justify-center bg-black/60 backdrop-blur-sm z-50 p-4">
+
+    <div class="glass rounded-3xl w-full max-w-lg">
+
+        <div class="p-6 border-b border-white/10">
+
+            <h3 class="text-xl font-bold">
+                Edit Profil
+            </h3>
+
+        </div>
+
+        <form action="{{ url_for('update_public_profile') }}"
+         method="POST">
+            <div class="p-6 space-y-4">
+
+                <div>
+
+                    <label class="block mb-2 text-sm text-slate-300">
+                        Username
+                    </label>
+
+                    <input
+                        type="text"
+                        name="username"
+                        value="{{ session.get('username') }}"
+                        required
+                        class="w-full px-4 py-3 rounded-xl bg-slate-900 border border-slate-700 focus:border-emerald-500 outline-none">
+
+                </div>
+
+                <div>
+
+                    <label class="block mb-2 text-sm text-slate-300">
+                        Email
+                    </label>
+
+                    <input
+                        type="email"
+                        name="email"
+                        value="{{ session.get('email') }}"
+                        required
+                        class="w-full px-4 py-3 rounded-xl bg-slate-900 border border-slate-700 focus:border-emerald-500 outline-none">
+
+                </div>
+
+            </div>
+
+            <div class="p-6 border-t border-white/10 flex justify-end gap-3">
+
+                <button
+                    type="button"
+                    onclick="closeEditProfileModal()"
+                    class="px-4 py-2 rounded-xl border border-slate-700">
+
+                    Batal
+
+                </button>
+
+                <button
+                    type="submit"
+                    class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700">
+
+                    Simpan
+
+                </button>
+
+            </div>
+
+        </form>
+
+    </div>
+
+</div>
+
+
+<div id="changePasswordModal"
+     class="fixed inset-0 hidden items-center justify-center bg-black/60 backdrop-blur-sm z-50 p-4">
+
+    <div class="glass rounded-3xl w-full max-w-lg">
+
+        <div class="p-6 border-b border-white/10">
+
+            <h3 class="text-xl font-bold">
+                Ubah Password
+            </h3>
+
+        </div>
+
+        <form action="{{ url_for('change_public_password') }}"
+            method="POST">
+
+            <div class="p-6 space-y-4">
+
+                <input
+                    type="password"
+                    name="old_password"
+                    placeholder="Password Lama"
+                    required
+                    class="w-full px-4 py-3 rounded-xl bg-slate-900 border border-slate-700">
+
+                <input
+                    type="password"
+                    name="new_password"
+                    placeholder="Password Baru"
+                    required
+                    minlength="6"
+                    class="w-full px-4 py-3 rounded-xl bg-slate-900 border border-slate-700">
+
+                <input
+                    type="password"
+                    name="confirm_password"
+                    placeholder="Konfirmasi Password Baru"
+                    required
+                    minlength="6"
+                    class="w-full px-4 py-3 rounded-xl bg-slate-900 border border-slate-700">
+
+            </div>
+
+            <div class="p-6 border-t border-white/10 flex justify-end gap-3">
+
+                <button
+                    type="button"
+                    onclick="closeChangePasswordModal()"
+                    class="px-4 py-2 rounded-xl border border-slate-700">
+
+                    Batal
+
+                </button>
+
+                <button
+                    type="submit"
+                    class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700">
+
+                    Simpan
+
+                </button>
+
+            </div>
+
+        </form>
+
+    </div>
+
+</div>
+
+<script src="{{ url_for('static', filename='js/public/public_profile.js') }}"></script>
+
+{% endblock %}
