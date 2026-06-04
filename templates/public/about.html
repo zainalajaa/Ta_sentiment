@@ -8,288 +8,257 @@ Tentang Sistem
 
 <section class="hero-bg min-h-screen pt-28 pb-20">
 
-    <div class="max-w-7xl mx-auto px-6">
+```
+<div class="max-w-7xl mx-auto px-6">
 
-        <!-- HEADER -->
-        <div class="text-center">
+    <!-- HERO -->
+    <div class="text-center">
 
-            <span class="px-4 py-2 rounded-full bg-emerald-500/20 text-emerald-400 text-sm">
-                Tentang Penelitian
+        <span class="inline-flex px-4 py-2 rounded-full bg-emerald-500/20 text-emerald-400 text-sm font-medium">
+            Tentang Sistem
+        </span>
+
+        <h1 class="mt-6 text-5xl md:text-6xl font-extrabold leading-tight">
+            Sistem Analisis Sentimen
+            <span class="text-emerald-400">
+                Ulasan Edlink
             </span>
+        </h1>
 
-            <h1 class="mt-6 text-5xl font-extrabold">
-                Sistem Analisis Sentimen
-                <span class="text-emerald-400">
-                    Ulasan Edlink
-                </span>
-            </h1>
+        <p class="mt-8 max-w-4xl mx-auto text-slate-400 text-lg leading-relaxed">
+            Sistem berbasis web yang dikembangkan untuk mengidentifikasi
+            sentimen ulasan pengguna aplikasi Edlink secara otomatis
+            menggunakan metode Naïve Bayes Classifier dan pembobotan
+            TF-IDF.
+        </p>
 
-            <p class="mt-6 max-w-3xl mx-auto text-slate-400 text-lg leading-relaxed">
+    </div>
 
-                Sistem ini dikembangkan untuk mengklasifikasikan sentimen
-                ulasan pengguna aplikasi Edlink menjadi sentimen positif
-                dan negatif menggunakan metode Naïve Bayes Classifier
-                berbasis pembobotan TF-IDF.
+    <!-- STATISTIK SISTEM -->
+    <div class="mt-20">
 
-            </p>
+        <h2 class="text-4xl font-bold text-center">
+            Statistik Sistem
+        </h2>
 
-        </div>
+        <div class="grid md:grid-cols-5 gap-6 mt-12">
 
-        <!-- TUJUAN -->
-        <div class="glass rounded-3xl p-8 mt-16">
-
-            <h2 class="text-3xl font-bold">
-                Tujuan Penelitian
-            </h2>
-
-            <p class="mt-6 text-slate-300 leading-relaxed">
-
-                Penelitian ini bertujuan untuk menganalisis sentimen
-                pengguna aplikasi Edlink berdasarkan ulasan yang diberikan
-                pada Google Play Store sehingga dapat diketahui persepsi
-                pengguna terhadap layanan dan fitur aplikasi.
-
-            </p>
-
-        </div>
-
-        <!-- ALUR SISTEM -->
-        <div class="mt-20">
-
-            <h2 class="text-4xl font-bold text-center">
-                Alur Sistem
-            </h2>
-
-            <div class="grid md:grid-cols-5 gap-6 mt-12">
-
-                <div class="glass rounded-2xl p-6 text-center">
-                    <h3 class="font-bold">
-                        Input Ulasan
-                    </h3>
-                </div>
-
-                <div class="glass rounded-2xl p-6 text-center">
-                    <h3 class="font-bold">
-                        Preprocessing
-                    </h3>
-                </div>
-
-                <div class="glass rounded-2xl p-6 text-center">
-                    <h3 class="font-bold">
-                        TF-IDF
-                    </h3>
-                </div>
-
-                <div class="glass rounded-2xl p-6 text-center">
-                    <h3 class="font-bold">
-                        Naïve Bayes
-                    </h3>
-                </div>
-
-                <div class="glass rounded-2xl p-6 text-center">
-                    <h3 class="font-bold">
-                        Hasil Sentimen
-                    </h3>
-                </div>
-
-            </div>
-
-        </div>
-
-        <!-- PREPROCESSING -->
-        <div class="mt-20">
-
-            <h2 class="text-4xl font-bold text-center">
-                Tahapan Preprocessing
-            </h2>
-
-            <div class="grid md:grid-cols-3 gap-6 mt-12">
-
-                <div class="glass rounded-2xl p-6">
-                    <h3 class="font-bold text-emerald-400">
-                        Case Folding
-                    </h3>
-
-                    <p class="mt-3 text-slate-400">
-                        Mengubah seluruh huruf menjadi huruf kecil.
-                    </p>
-                </div>
-
-                <div class="glass rounded-2xl p-6">
-                    <h3 class="font-bold text-emerald-400">
-                        Cleaning
-                    </h3>
-
-                    <p class="mt-3 text-slate-400">
-                        Menghapus tanda baca, angka, emoji dan karakter khusus.
-                    </p>
-                </div>
-
-                <div class="glass rounded-2xl p-6">
-                    <h3 class="font-bold text-emerald-400">
-                        Tokenizing
-                    </h3>
-
-                    <p class="mt-3 text-slate-400">
-                        Memecah kalimat menjadi kumpulan kata.
-                    </p>
-                </div>
-
-                <div class="glass rounded-2xl p-6">
-                    <h3 class="font-bold text-emerald-400">
-                        Normalisasi
-                    </h3>
-
-                    <p class="mt-3 text-slate-400">
-                        Mengubah kata tidak baku menjadi kata baku.
-                    </p>
-                </div>
-
-                <div class="glass rounded-2xl p-6">
-                    <h3 class="font-bold text-emerald-400">
-                        Stopword Removal
-                    </h3>
-
-                    <p class="mt-3 text-slate-400">
-                        Menghapus kata yang tidak memiliki nilai informasi.
-                    </p>
-                </div>
-
-                <div class="glass rounded-2xl p-6">
-                    <h3 class="font-bold text-emerald-400">
-                        Stemming
-                    </h3>
-
-                    <p class="mt-3 text-slate-400">
-                        Mengubah kata menjadi bentuk dasarnya.
-                    </p>
-                </div>
-
-            </div>
-
-        </div>
-
-        <!-- METODE -->
-        <div class="grid md:grid-cols-2 gap-8 mt-20">
-
-            <div class="glass rounded-3xl p-8">
-
-                <h2 class="text-3xl font-bold">
-                    TF-IDF
+            <div class="glass rounded-3xl p-6 text-center">
+                <h2 class="text-4xl font-bold text-emerald-400">
+                    {{ total_analisis }}
                 </h2>
-
-                <p class="mt-6 text-slate-400 leading-relaxed">
-
-                    TF-IDF digunakan untuk memberikan bobot pada setiap kata
-                    berdasarkan tingkat kemunculannya dalam dokumen dan
-                    keseluruhan dataset sehingga kata yang lebih penting
-                    memiliki nilai bobot lebih tinggi.
-
+                <p class="mt-2 text-slate-400">
+                    Total Analisis
                 </p>
-
             </div>
 
-            <div class="glass rounded-3xl p-8">
-
-                <h2 class="text-3xl font-bold">
-                    Naïve Bayes Classifier
+            <div class="glass rounded-3xl p-6 text-center">
+                <h2 class="text-4xl font-bold text-green-400">
+                    {{ total_positif }}
                 </h2>
-
-                <p class="mt-6 text-slate-400 leading-relaxed">
-
-                    Naïve Bayes Classifier digunakan untuk melakukan
-                    klasifikasi sentimen berdasarkan probabilitas
-                    kemunculan kata pada masing-masing kelas sentimen.
-
+                <p class="mt-2 text-slate-400">
+                    Positif
                 </p>
-
             </div>
 
-        </div>
-
-        <!-- DATASET -->
-        <div class="mt-20">
-
-            <h2 class="text-4xl font-bold text-center">
-                Dataset Penelitian
-            </h2>
-
-            <div class="grid md:grid-cols-4 gap-6 mt-12">
-
-                <div class="glass rounded-2xl p-6 text-center">
-                    <h2 class="text-4xl font-bold text-emerald-400">
-                        1000
-                    </h2>
-                    <p class="mt-2">Total Data</p>
-                </div>
-
-                <div class="glass rounded-2xl p-6 text-center">
-                    <h2 class="text-4xl font-bold text-green-400">
-                        427
-                    </h2>
-                    <p class="mt-2">Positif</p>
-                </div>
-
-                <div class="glass rounded-2xl p-6 text-center">
-                    <h2 class="text-4xl font-bold text-red-400">
-                        460
-                    </h2>
-                    <p class="mt-2">Negatif</p>
-                </div>
-
-                <div class="glass rounded-2xl p-6 text-center">
-                    <h2 class="text-4xl font-bold text-yellow-400">
-                        113
-                    </h2>
-                    <p class="mt-2">Netral</p>
-                </div>
-
+            <div class="glass rounded-3xl p-6 text-center">
+                <h2 class="text-4xl font-bold text-red-400">
+                    {{ total_negatif }}
+                </h2>
+                <p class="mt-2 text-slate-400">
+                    Negatif
+                </p>
             </div>
 
-        </div>
+            <div class="glass rounded-3xl p-6 text-center">
+                <h2 class="text-4xl font-bold text-yellow-400">
+                    {{ total_netral }}
+                </h2>
+                <p class="mt-2 text-slate-400">
+                    Netral
+                </p>
+            </div>
 
-        <!-- HASIL -->
-        <div class="mt-20">
-
-            <h2 class="text-4xl font-bold text-center">
-                Hasil Pengujian Terbaik
-            </h2>
-
-            <div class="grid md:grid-cols-4 gap-6 mt-12">
-
-                <div class="glass rounded-2xl p-6 text-center">
-                    <h2 class="text-4xl font-bold text-emerald-400">
-                        76.77%
-                    </h2>
-                    <p>Accuracy</p>
-                </div>
-
-                <div class="glass rounded-2xl p-6 text-center">
-                    <h2 class="text-4xl font-bold text-cyan-400">
-                        69.67%
-                    </h2>
-                    <p>Precision</p>
-                </div>
-
-                <div class="glass rounded-2xl p-6 text-center">
-                    <h2 class="text-4xl font-bold text-yellow-400">
-                        76.77%
-                    </h2>
-                    <p>Recall</p>
-                </div>
-
-                <div class="glass rounded-2xl p-6 text-center">
-                    <h2 class="text-4xl font-bold text-purple-400">
-                        72.23%
-                    </h2>
-                    <p>F1-Score</p>
-                </div>
-
+            <div class="glass rounded-3xl p-6 text-center">
+                <h2 class="text-4xl font-bold text-cyan-400">
+                    {{ "%.2f"|format(accuracy) }}%
+                </h2>
+                <p class="mt-2 text-slate-400">
+                    Accuracy
+                </p>
             </div>
 
         </div>
 
     </div>
+
+    <!-- TENTANG SISTEM -->
+    <div class="glass rounded-3xl p-10 mt-20">
+
+        <h2 class="text-3xl font-bold">
+            Tentang Sistem
+        </h2>
+
+        <p class="mt-6 text-slate-300 leading-relaxed">
+            Sistem ini dibangun sebagai implementasi penelitian
+            "Implementasi Algoritma Naïve Bayes Classifier untuk
+            Analisis Sentimen Ulasan Aplikasi Edlink di Google Play Store".
+        </p>
+
+        <p class="mt-4 text-slate-400 leading-relaxed">
+            Model yang digunakan telah melalui proses preprocessing,
+            ekstraksi fitur menggunakan TF-IDF, pelatihan model
+            Naïve Bayes, serta evaluasi performa untuk menghasilkan
+            klasifikasi sentimen yang akurat.
+        </p>
+
+    </div>
+
+    <!-- FITUR -->
+    <div class="mt-20">
+
+        <h2 class="text-4xl font-bold text-center">
+            Fitur Utama Sistem
+        </h2>
+
+        <div class="grid md:grid-cols-4 gap-6 mt-12">
+
+            <div class="glass rounded-2xl p-6">
+                <h3 class="font-bold text-emerald-400">
+                    Analisis Sentimen
+                </h3>
+                <p class="mt-3 text-slate-400">
+                    Mengklasifikasikan ulasan menjadi sentimen positif
+                    atau negatif secara otomatis.
+                </p>
+            </div>
+
+            <div class="glass rounded-2xl p-6">
+                <h3 class="font-bold text-emerald-400">
+                    Riwayat Analisis
+                </h3>
+                <p class="mt-3 text-slate-400">
+                    Menyimpan histori hasil analisis pengguna.
+                </p>
+            </div>
+
+            <div class="glass rounded-2xl p-6">
+                <h3 class="font-bold text-emerald-400">
+                    Dashboard Monitoring
+                </h3>
+                <p class="mt-3 text-slate-400">
+                    Menampilkan statistik sentimen secara real-time.
+                </p>
+            </div>
+
+            <div class="glass rounded-2xl p-6">
+                <h3 class="font-bold text-emerald-400">
+                    Evaluasi Model
+                </h3>
+                <p class="mt-3 text-slate-400">
+                    Menampilkan accuracy, precision, recall dan F1-score.
+                </p>
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- ALUR SISTEM -->
+    <div class="mt-20">
+
+        <h2 class="text-4xl font-bold text-center">
+            Cara Kerja Sistem
+        </h2>
+
+        <div class="grid md:grid-cols-5 gap-6 mt-12">
+
+            <div class="glass rounded-2xl p-6 text-center">Input Ulasan</div>
+            <div class="glass rounded-2xl p-6 text-center">Preprocessing</div>
+            <div class="glass rounded-2xl p-6 text-center">TF-IDF</div>
+            <div class="glass rounded-2xl p-6 text-center">Naïve Bayes</div>
+            <div class="glass rounded-2xl p-6 text-center">Hasil Sentimen</div>
+
+        </div>
+
+    </div>
+
+    <!-- DATASET PENELITIAN -->
+    <div class="mt-20">
+
+        <h2 class="text-4xl font-bold text-center">
+            Dataset Penelitian Awal
+        </h2>
+
+        <div class="grid md:grid-cols-4 gap-6 mt-12">
+
+            <div class="glass rounded-2xl p-6 text-center">
+                <h2 class="text-4xl font-bold text-emerald-400">1000</h2>
+                <p>Total Data</p>
+            </div>
+
+            <div class="glass rounded-2xl p-6 text-center">
+                <h2 class="text-4xl font-bold text-green-400">427</h2>
+                <p>Positif</p>
+            </div>
+
+            <div class="glass rounded-2xl p-6 text-center">
+                <h2 class="text-4xl font-bold text-red-400">460</h2>
+                <p>Negatif</p>
+            </div>
+
+            <div class="glass rounded-2xl p-6 text-center">
+                <h2 class="text-4xl font-bold text-yellow-400">113</h2>
+                <p>Netral</p>
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- PERFORMA MODEL -->
+    <div class="mt-20">
+
+        <h2 class="text-4xl font-bold text-center">
+            Performa Model
+        </h2>
+
+        <div class="grid md:grid-cols-4 gap-6 mt-12">
+
+            <div class="glass rounded-2xl p-6 text-center">
+                <h2 class="text-4xl font-bold text-emerald-400">
+                    {{ "%.2f"|format(accuracy) }}%
+                </h2>
+                <p>Accuracy</p>
+            </div>
+
+            <div class="glass rounded-2xl p-6 text-center">
+                <h2 class="text-4xl font-bold text-cyan-400">
+                    {{ "%.2f"|format(precision) }}%
+                </h2>
+                <p>Precision</p>
+            </div>
+
+            <div class="glass rounded-2xl p-6 text-center">
+                <h2 class="text-4xl font-bold text-yellow-400">
+                    {{ "%.2f"|format(recall) }}%
+                </h2>
+                <p>Recall</p>
+            </div>
+
+            <div class="glass rounded-2xl p-6 text-center">
+                <h2 class="text-4xl font-bold text-purple-400">
+                    {{ "%.2f"|format(f1_score) }}%
+                </h2>
+                <p>F1-Score</p>
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+```
 
 </section>
 

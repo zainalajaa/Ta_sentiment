@@ -54,6 +54,8 @@ from sklearn.model_selection import train_test_split
 
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
+from flask import session, request, jsonify
+from datetime import datetime
 
 from Sastrawi.Stemmer.StemmerFactory import (
     StemmerFactory
@@ -561,7 +563,6 @@ def process_sentiment_analysis(text):
 
     return result, scores
 
-
 # =====================================================
 # HALAMAN UTAMA USER LOGIN
 # =====================================================
@@ -590,17 +591,13 @@ def index():
             # PREPROCESSING
             # =====================
 
-            tokens = preprocess_text(
-                text
-            )
+            tokens = preprocess_text(text)
 
             # =====================
             # PREDIKSI
             # =====================
 
-            result_data = predict(
-                tokens
-            )
+            result_data = predict(tokens)
 
             result = result_data["label"]
 
@@ -614,6 +611,16 @@ def index():
             negatif_score = scores.get(
                 "negatif",
                 0
+            )
+
+            # =====================
+            # FORMAT ENUM DATABASE
+            # =====================
+
+            hasil_db = (
+                "Positif"
+                if result.lower() == "positif"
+                else "Negatif"
             )
 
             # =====================
@@ -641,10 +648,12 @@ def index():
                 """, (
                     session["user_id"],
                     text,
-                    result
+                    hasil_db
                 ))
 
                 conn.commit()
+
+                print("Histori berhasil disimpan")
 
             except Exception as e:
 
@@ -654,8 +663,12 @@ def index():
 
             finally:
 
-                cursor.close()
-                conn.close()
+                if cursor:
+                    cursor.close()
+
+                if conn:
+                    conn.close()
+                    
 
     return render_template(
         "public/index.html",
@@ -683,6 +696,8 @@ def sentiment():
 
     scores = {}
 
+    detail = None
+
     positif_score = 0
     negatif_score = 0
 
@@ -703,6 +718,10 @@ def sentiment():
                 tokens
             )
 
+            detail = get_analysis_detail(
+                text
+            )
+
             result = result_data["label"]
 
             scores = result_data["scores"]
@@ -717,19 +736,74 @@ def sentiment():
                 0
             )
 
+
+            # =====================
+            # SIMPAN HISTORI
+            # =====================
+
+            hasil_db = (
+                "Positif"
+                if result.lower() == "positif"
+                else "Negatif"
+            )
+
+            try:
+
+                conn = get_connection()
+                cursor = conn.cursor()
+
+                cursor.execute("""
+                    INSERT INTO hasil_analisis
+                    (
+                        user_id,
+                        teks,
+                        hasil
+                    )
+                    VALUES
+                    (
+                        %s,
+                        %s,
+                        %s
+                    )
+                """, (
+                    session.get("user_id"),  # None jika guest
+                    text,
+                    hasil_db
+                ))
+
+                conn.commit()
+
+                print("Histori publik berhasil disimpan")
+
+            except Exception as e:
+
+                print(
+                    f"Error simpan histori publik: {e}"
+                )
+
+            finally:
+
+                if cursor:
+                    cursor.close()
+
+                if conn:
+                    conn.close()
+
     return render_template(
-        "public/sentiment.html",
+    "public/sentiment.html",
 
-        result=result,
-        text=text,
+    result=result,
+    text=text,
 
-        scores=scores,
+    scores=scores,
 
-        positif_score=positif_score,
-        negatif_score=negatif_score,
+    positif_score=positif_score,
+    negatif_score=negatif_score,
 
-        role=session.get("role")
-    )
+    detail=detail,
+
+    role=session.get("role")
+)
 
 
 
@@ -739,8 +813,136 @@ def sentiment():
 
 @app.route('/about')
 def about():
+
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    # ======================
+    # DATASET
+    # ======================
+
+    cursor.execute("""
+        SELECT COUNT(*)
+        FROM preprocessing
+        WHERE label IN ('positif','negatif')
+    """)
+    total_dataset = cursor.fetchone()[0]
+
+    cursor.execute("""
+        SELECT COUNT(*)
+        FROM preprocessing
+        WHERE label = 'positif'
+    """)
+    total_positif = cursor.fetchone()[0]
+
+    cursor.execute("""
+        SELECT COUNT(*)
+        FROM preprocessing
+        WHERE label = 'negatif'
+    """)
+    total_negatif = cursor.fetchone()[0]
+
+    cursor.execute("""
+        SELECT COUNT(*)
+        FROM preprocessing
+        WHERE label = 'netral'
+    """)
+    total_netral = cursor.fetchone()[0]
+
+    # ======================
+    # TOTAL ANALISIS USER
+    # ======================
+
+    cursor.execute("""
+        SELECT COUNT(*)
+        FROM hasil_analisis
+    """)
+    total_analisis = cursor.fetchone()[0]
+
+    cursor.close()
+    conn.close()
+
+    # ======================
+    # EVALUASI MODEL
+    # ======================
+
+    try:
+
+        X_train, X_test, y_train, y_test = get_split_data()
+
+        vectorizer = get_vectorizer()
+
+        X_train_tfidf = vectorizer.fit_transform(X_train)
+        X_test_tfidf = vectorizer.transform(X_test)
+
+        model = MultinomialNB()
+
+        model.fit(
+            X_train_tfidf,
+            y_train
+        )
+
+        predictions = model.predict(X_test_tfidf)
+
+        accuracy = round(
+            accuracy_score(
+                y_test,
+                predictions
+            ) * 100,
+            2
+        )
+
+        precision = round(
+            precision_score(
+                y_test,
+                predictions,
+                average='weighted',
+                zero_division=0
+            ) * 100,
+            2
+        )
+
+        recall = round(
+            recall_score(
+                y_test,
+                predictions,
+                average='weighted',
+                zero_division=0
+            ) * 100,
+            2
+        )
+
+        f1_score_value = round(
+            f1_score(
+                y_test,
+                predictions,
+                average='weighted',
+                zero_division=0
+            ) * 100,
+            2
+        )
+
+    except Exception:
+
+        accuracy = 0
+        precision = 0
+        recall = 0
+        f1_score_value = 0
+
     return render_template(
-        'public/about.html'
+        'public/about.html',
+
+        total_dataset=total_dataset,
+        total_positif=total_positif,
+        total_negatif=total_negatif,
+        total_netral=total_netral,
+
+        total_analisis=total_analisis,
+
+        accuracy=accuracy,
+        precision=precision,
+        recall=recall,
+        f1_score=f1_score_value
     )
 
 
@@ -924,6 +1126,276 @@ def predict(tokens):
         "scores": scores
     }
 
+
+
+def get_analysis_detail(text):
+
+    original = text
+
+    # CASE FOLDING
+    casefolding = text.lower()
+
+    # CLEANING
+    cleaning = re.sub(r'http\S+', '', casefolding)
+    cleaning = re.sub(r'@\w+', '', cleaning)
+    cleaning = re.sub(r'#\w+', '', cleaning)
+    cleaning = re.sub(r'\d+', '', cleaning)
+
+    cleaning = re.sub(
+        r'[^a-zA-Z\s]',
+        ' ',
+        cleaning
+    )
+
+    cleaning = re.sub(
+        r'\s+',
+        ' ',
+        cleaning
+    ).strip()
+
+    # TOKENIZING
+    tokens = word_tokenize(cleaning)
+
+    # NORMALISASI
+    normalization_dict = {
+
+        "gk":"tidak",
+        "ga":"tidak",
+        "nggak":"tidak",
+        "tdk":"tidak",
+
+        "apk":"aplikasi",
+
+        "bgt":"banget",
+        "bgtt":"banget",
+
+        "sy":"saya",
+        "gw":"saya",
+
+        "dgn":"dengan",
+
+        "udh":"sudah",
+        "blm":"belum",
+
+        "jg":"juga",
+
+        "trs":"terus",
+
+        "jls":"jelas"
+    }
+
+    normalized_words = []
+
+    for word in tokens:
+
+        normalized_words.append(
+            normalization_dict.get(
+                word,
+                word
+            )
+        )
+
+    # STOPWORD
+    negasi = [
+        'tidak',
+        'bukan',
+        'jangan',
+        'belum',
+        'kurang'
+    ]
+
+    custom_stopwords = [
+        word
+        for word in stop_words
+        if word not in negasi
+    ]
+
+    filtered_words = []
+
+    for word in normalized_words:
+
+        if word not in custom_stopwords:
+            filtered_words.append(word)
+
+    # STEMMING
+    stemmed_words = []
+
+    for word in filtered_words:
+
+        stemmed_words.append(
+            stemmer.stem(word)
+        )
+
+    # TFIDF
+    model, vectorizer = train_model()
+
+    final_text = " ".join(
+        stemmed_words
+    )
+
+    tfidf_vector = vectorizer.transform(
+        [final_text]
+    )
+
+    feature_names = vectorizer.get_feature_names_out()
+
+    weights = tfidf_vector.toarray()[0]
+
+    tfidf_words = []
+
+    for i, score in enumerate(weights):
+
+        if score > 0:
+
+            tfidf_words.append({
+
+                'word':
+                feature_names[i],
+
+                'score':
+                round(
+                    float(score),
+                    4
+                )
+            })
+
+    tfidf_words = sorted(
+        tfidf_words,
+        key=lambda x: x['score'],
+        reverse=True
+    )[:10]
+
+    return {
+
+        'original': original,
+
+        'casefolding': casefolding,
+
+        'cleaning': cleaning,
+
+        'tokenizing': tokens,
+
+        'normalisasi': normalized_words,
+
+        'stopword': filtered_words,
+
+        'stemming': stemmed_words,
+
+        'tfidf': tfidf_words
+    }
+
+
+
+@app.route('/simpan_hasil_analisis', methods=['POST'])
+@login_required
+def simpan_hasil_analisis():
+
+    try:
+
+        teks = request.form.get('teks', '').strip()
+
+        if not teks:
+            return jsonify({
+                'success': False,
+                'message': 'Teks tidak boleh kosong'
+            }), 400
+
+        # ==========================
+        # PREPROCESSING
+        # ==========================
+        tokens = preprocess_text(teks)
+
+        # ==========================
+        # PREDIKSI SENTIMEN
+        # ==========================
+        result_data = predict(tokens)
+
+        hasil = result_data['label']
+
+        # Samakan dengan ENUM database
+        hasil = hasil.capitalize()
+
+        conn = get_connection()
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            INSERT INTO hasil_analisis
+            (
+                user_id,
+                teks,
+                hasil
+            )
+            VALUES
+            (
+                %s,
+                %s,
+                %s
+            )
+        """, (
+            session.get("user_id"),
+            teks,
+            hasil
+        ))
+
+        conn.commit()
+
+        return jsonify({
+            'success': True,
+            'hasil': hasil
+        })
+
+    except Exception as e:
+
+        import traceback
+        traceback.print_exc()
+
+        return jsonify({
+            'success': False,
+            'message': str(e)
+        }), 500
+
+    finally:
+
+        try:
+            cursor.close()
+            conn.close()
+        except:
+            pass
+
+
+
+
+@app.route('/detail_analisis', methods=['POST'])
+@login_required
+def detail_analisis():
+
+    try:
+
+        text = request.form.get(
+            'text',
+            ''
+        ).strip()
+
+        if not text:
+
+            return jsonify({
+                'success': False,
+                'message': 'Teks kosong'
+            })
+
+        detail = get_analysis_detail(text)
+
+        return jsonify({
+            'success': True,
+            'data': detail
+        })
+
+    except Exception as e:
+
+        return jsonify({
+            'success': False,
+            'message': str(e)
+        })
 
 
 # =====================================================
@@ -1643,6 +2115,8 @@ def preprocessing():
     )
 
 
+
+
 @app.route('/preprocessing/import', methods=['POST'])
 @admin_required
 def import_data():
@@ -1722,6 +2196,9 @@ def import_data():
     flash('Dataset berhasil diimport')
 
     return redirect('/preprocessing')
+
+
+
 
 
 @app.route('/preprocessing/process')

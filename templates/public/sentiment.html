@@ -1,3 +1,4 @@
+```html
 {% extends 'layouts/public_base.html' %}
 
 {% block title %}
@@ -68,7 +69,6 @@ Analisis Sentimen
 
             <div class="grid md:grid-cols-2 gap-6">
 
-                <!-- SENTIMEN -->
                 <div class="bg-slate-900 rounded-2xl p-6">
 
                     <p class="text-slate-400 mb-2">
@@ -91,7 +91,6 @@ Analisis Sentimen
 
                 </div>
 
-                <!-- STATUS -->
                 <div class="bg-slate-900 rounded-2xl p-6">
 
                     <p class="text-slate-400 mb-2">
@@ -108,16 +107,15 @@ Analisis Sentimen
 
         </div>
 
-        <!-- DETAIL PROBABILITAS -->
         {% if scores %}
 
+        <!-- TINGKAT KEYAKINAN -->
         <div class="glass rounded-3xl p-8 mt-8">
 
             <h3 class="text-2xl font-bold mb-6">
                 Tingkat Keyakinan Model
             </h3>
 
-            <!-- POSITIF -->
             <div class="mb-6">
 
                 <div class="flex justify-between mb-2">
@@ -127,7 +125,7 @@ Analisis Sentimen
                     </span>
 
                     <span class="font-bold">
-                        {{ positif_score }}%
+                        {{ positif_score|default(0) }}%
                     </span>
 
                 </div>
@@ -143,7 +141,6 @@ Analisis Sentimen
 
             </div>
 
-            <!-- NEGATIF -->
             <div>
 
                 <div class="flex justify-between mb-2">
@@ -153,7 +150,7 @@ Analisis Sentimen
                     </span>
 
                     <span class="font-bold">
-                        {{ negatif_score }}%
+                        {{ negatif_score|default(0) }}%
                     </span>
 
                 </div>
@@ -169,35 +166,6 @@ Analisis Sentimen
 
             </div>
 
-            <div class="glass rounded-3xl p-8 mt-8">
-
-                <h3 class="text-2xl font-bold mb-6">
-                    Tahapan Analisis
-                </h3>
-
-                <div class="grid md:grid-cols-4 gap-4">
-
-                    <div class="bg-slate-900 rounded-xl p-4 text-center">
-                        ✓ Preprocessing
-                    </div>
-
-                    <div class="bg-slate-900 rounded-xl p-4 text-center">
-                        ✓ TF-IDF
-                    </div>
-
-                    <div class="bg-slate-900 rounded-xl p-4 text-center">
-                        ✓ Naïve Bayes
-                    </div>
-
-                    <div class="bg-slate-900 rounded-xl p-4 text-center text-emerald-400 font-semibold">
-                        ✓ {{ result|capitalize }}
-                    </div>
-
-                </div>
-
-            </div>
-
-            <!-- KESIMPULAN -->
             <div class="mt-8 p-5 rounded-2xl bg-slate-900 border border-slate-700">
 
                 {% if result|lower == 'positif' %}
@@ -206,7 +174,7 @@ Analisis Sentimen
 
                     Model memiliki keyakinan sebesar
                     <span class="font-bold">
-                        {{ positif_score }}%
+                        {{ positif_score|default(0) }}%
                     </span>
                     bahwa ulasan termasuk sentimen positif.
 
@@ -218,7 +186,7 @@ Analisis Sentimen
 
                     Model memiliki keyakinan sebesar
                     <span class="font-bold">
-                        {{ negatif_score }}%
+                        {{ negatif_score|default(0) }}%
                     </span>
                     bahwa ulasan termasuk sentimen negatif.
 
@@ -230,9 +198,37 @@ Analisis Sentimen
 
         </div>
 
+        <!-- TAHAPAN ANALISIS -->
+        <div class="glass rounded-3xl p-8 mt-8">
+
+            <h3 class="text-2xl font-bold mb-6">
+                Tahapan Analisis
+            </h3>
+
+            <div class="grid md:grid-cols-4 gap-4">
+
+                <div class="bg-slate-900 rounded-xl p-4 text-center">
+                    ✓ Preprocessing
+                </div>
+
+                <div class="bg-slate-900 rounded-xl p-4 text-center">
+                    ✓ TF-IDF
+                </div>
+
+                <div class="bg-slate-900 rounded-xl p-4 text-center">
+                    ✓ Naïve Bayes
+                </div>
+
+                <div class="bg-slate-900 rounded-xl p-4 text-center text-emerald-400 font-semibold">
+                    ✓ {{ result|capitalize }}
+                </div>
+
+            </div>
+
+        </div>
+
         {% endif %}
 
-        <!-- FITUR LOGIN -->
         {% if not session.get('login') %}
 
         <div class="glass rounded-3xl p-8 mt-8 text-center">
@@ -272,6 +268,134 @@ Analisis Sentimen
 
     </div>
 
+    {% if session.get('login') and detail %}
+
+    <div class="glass rounded-3xl p-8 mt-8">
+
+        <h2 class="text-2xl font-bold mb-8">
+            Detail Perhitungan Sentimen
+        </h2>
+
+        <div class="space-y-6">
+
+            <div class="relative pl-12">
+
+                <div class="absolute left-0 top-1 w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center font-bold">
+                    1
+                </div>
+
+                <div class="bg-slate-900 rounded-2xl p-5">
+
+                    <h4 class="font-bold text-emerald-400 mb-2">
+                        Teks Asli
+                    </h4>
+
+                    <p class="text-slate-300">
+                        {{ detail.original }}
+                    </p>
+
+                </div>
+
+            </div>
+
+            <div>
+                <h4 class="font-semibold text-emerald-400">2. Case Folding</h4>
+                <p>{{ detail.casefolding }}</p>
+            </div>
+
+            <div>
+                <h4 class="font-semibold text-emerald-400">3. Cleaning</h4>
+                <p>{{ detail.cleaning }}</p>
+            </div>
+
+            <div>
+                <h4 class="font-semibold text-emerald-400">4. Tokenizing</h4>
+                <p>{{ detail.tokenizing|default([])|join(', ') }}</p>
+            </div>
+
+            <div>
+                <h4 class="font-semibold text-emerald-400">5. Normalisasi</h4>
+                <p>{{ detail.normalisasi|default([])|join(', ') }}</p>
+            </div>
+
+            <div>
+                <h4 class="font-semibold text-emerald-400">6. Stopword Removal</h4>
+                <p>{{ detail.stopword|default([])|join(', ') }}</p>
+            </div>
+
+            <div>
+                <h4 class="font-semibold text-emerald-400">7. Stemming</h4>
+                <p>{{ detail.stemming|default([])|join(', ') }}</p>
+            </div>
+
+            <div>
+
+                <h4 class="font-semibold text-emerald-400 mb-4">
+                    8. TF-IDF Top Terms
+                </h4>
+
+                <div class="overflow-x-auto">
+
+                    <table class="w-full">
+
+                        <thead>
+
+                            <tr class="border-b border-slate-700">
+
+                                <th class="text-left p-3">Kata</th>
+                                <th class="text-left p-3">Bobot</th>
+
+                            </tr>
+
+                        </thead>
+
+                        <tbody>
+
+                            {% if detail.tfidf %}
+
+                                {% for item in detail.tfidf %}
+
+                                <tr class="border-b border-slate-800">
+
+                                    <td class="p-3">
+                                        {{ item.word }}
+                                    </td>
+
+                                    <td class="p-3">
+                                        {{ item.score }}
+                                    </td>
+
+                                </tr>
+
+                                {% endfor %}
+
+                            {% else %}
+
+                                <tr>
+
+                                    <td colspan="2" class="p-4 text-center text-slate-400">
+                                        Data TF-IDF tidak tersedia
+                                    </td>
+
+                                </tr>
+
+                            {% endif %}
+
+                        </tbody>
+
+                    </table>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    {% endif %}
+
 </section>
 
 {% endblock %}
+```
