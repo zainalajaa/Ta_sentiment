@@ -1,4 +1,3 @@
-```html
 {% extends 'layouts/public_base.html' %}
 
 {% block title %}
@@ -30,6 +29,11 @@ Analisis Sentimen
 
         </div>
 
+        {% if session.get('login') and result %}
+        <!-- TAB PERHITUNGAN MANUAL (muncul setelah submit) -->
+        {% include 'components/public/calc_nav.html' %}
+        {% endif %}
+
         <!-- FORM -->
         <div class="glass rounded-3xl p-8">
 
@@ -57,6 +61,39 @@ Analisis Sentimen
             </form>
 
         </div>
+
+        {% if not_ready %}
+
+        <!-- NOTIFIKASI DATASET BELUM SIAP -->
+        <div class="glass rounded-3xl p-8 mt-8 border border-amber-500/40">
+
+            <div class="flex items-start gap-4">
+
+                <div class="w-12 h-12 rounded-full bg-amber-500/20 text-amber-400
+                            flex items-center justify-center text-2xl shrink-0">
+                    ⚠️
+                </div>
+
+                <div>
+
+                    <h3 class="text-xl font-bold text-amber-400">
+                        Ulasan Belum Bisa Diprediksi
+                    </h3>
+
+                    <p class="mt-2 text-slate-300">
+                        Saat ini sistem belum memiliki dataset yang siap untuk
+                        melakukan prediksi. Model dapat digunakan setelah admin
+                        mengimpor dataset, menjalankan preprocessing, dan dataset
+                        memuat kelas Positif &amp; Negatif. Silakan coba lagi nanti.
+                    </p>
+
+                </div>
+
+            </div>
+
+        </div>
+
+        {% endif %}
 
         {% if result %}
 
@@ -395,7 +432,109 @@ Analisis Sentimen
 
     {% endif %}
 
+    {% if session.get('login') and posterior %}
+
+    <!-- ============================================= -->
+    <!-- PERHITUNGAN POSTERIOR (NAIVE BAYES) -->
+    <!-- ============================================= -->
+    <div class="max-w-5xl mx-auto px-6 mt-8">
+
+        <div class="glass rounded-3xl p-8">
+
+            <h2 class="text-2xl font-bold mb-2">
+                Perhitungan Posterior &mdash; P(H|X)
+            </h2>
+
+            <p class="text-slate-400 mb-6">
+                <span class="font-mono text-sm text-emerald-400">
+                    P(Kelas|Ulasan) = P(Kelas) &times; &prod; P(kata|Kelas)
+                </span>
+            </p>
+
+            <!-- HASIL POSTERIOR -->
+            <div class="grid md:grid-cols-2 gap-6 mb-8">
+
+                <div class="bg-slate-900 rounded-2xl p-6 border
+                    {% if posterior.predicted|lower == 'positif' %}border-green-500/50{% else %}border-slate-700{% endif %}">
+                    <p class="text-slate-400 text-sm">P(Positif | Ulasan)</p>
+                    <h3 class="text-4xl font-bold text-green-400 mt-2">
+                        {{ "%.2f"|format(posterior.posteriors.positif.persen) }}%
+                    </h3>
+                    <p class="text-xs text-slate-500 mt-2 font-mono">
+                        log-likelihood: {{ "%.4f"|format(posterior.posteriors.positif.raw) }}
+                    </p>
+                </div>
+
+                <div class="bg-slate-900 rounded-2xl p-6 border
+                    {% if posterior.predicted|lower == 'negatif' %}border-red-500/50{% else %}border-slate-700{% endif %}">
+                    <p class="text-slate-400 text-sm">P(Negatif | Ulasan)</p>
+                    <h3 class="text-4xl font-bold text-red-400 mt-2">
+                        {{ "%.2f"|format(posterior.posteriors.negatif.persen) }}%
+                    </h3>
+                    <p class="text-xs text-slate-500 mt-2 font-mono">
+                        log-likelihood: {{ "%.4f"|format(posterior.posteriors.negatif.raw) }}
+                    </p>
+                </div>
+
+            </div>
+
+            <!-- PRIOR -->
+            <div class="mb-8">
+                <h4 class="font-semibold text-emerald-400 mb-3">Prior P(H)</h4>
+                <div class="flex flex-wrap gap-4">
+                    <div class="bg-slate-900 rounded-xl px-5 py-3">
+                        <span class="text-green-400 font-semibold">Positif:</span>
+                        <span class="font-mono">{{ "%.4f"|format(posterior.priors.positif) }}</span>
+                    </div>
+                    <div class="bg-slate-900 rounded-xl px-5 py-3">
+                        <span class="text-red-400 font-semibold">Negatif:</span>
+                        <span class="font-mono">{{ "%.4f"|format(posterior.priors.negatif) }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- KONTRIBUSI FITUR -->
+            <div>
+                <h4 class="font-semibold text-emerald-400 mb-4">
+                    Kontribusi Tiap Fitur (Bobot TF-IDF &times; Likelihood)
+                </h4>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead>
+                            <tr class="border-b border-slate-700 text-slate-300">
+                                <th class="text-left p-3">Fitur</th>
+                                <th class="text-left p-3">Bobot TF-IDF</th>
+                                <th class="text-left p-3 text-green-400">P(fitur|Positif)</th>
+                                <th class="text-left p-3 text-red-400">P(fitur|Negatif)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for r in posterior.detail_rows %}
+                            <tr class="border-b border-slate-800">
+                                <td class="p-3 font-medium">{{ r.word }}</td>
+                                <td class="p-3 font-mono text-slate-300">{{ "%.4f"|format(r.weight) }}</td>
+                                <td class="p-3 font-mono text-green-400">{{ "%.6f"|format(r.lh_pos) }}</td>
+                                <td class="p-3 font-mono text-red-400">{{ "%.6f"|format(r.lh_neg) }}</td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="4" class="p-6 text-center text-slate-400">
+                                    Tidak ada fitur yang cocok dengan ulasan.
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+    {% endif %}
+
 </section>
 
 {% endblock %}
-```

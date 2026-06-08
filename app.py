@@ -65,7 +65,11 @@ from Sastrawi.Stemmer.StemmerFactory import (
 # LOCAL MODULE
 # =========================================
 
-from ml.database import get_connection
+from ml.database import get_connection, init_password_reset_table
+from ml.mailer import send_reset_email
+
+import secrets
+from datetime import timedelta
 
 # =========================================
 # DOWNLOAD NLTK
@@ -116,6 +120,12 @@ from werkzeug.security import (
 app = Flask(__name__)
 
 app.secret_key = "secret123"
+
+# Pastikan tabel token reset password tersedia
+try:
+    init_password_reset_table()
+except Exception as e:
+    print(f"[WARN] Gagal init tabel password_resets: {e}")
 
 # =====================================================
 # DECORATOR LOGIN
@@ -239,7 +249,7 @@ def login():
         cursor = conn.cursor()
 
         cursor.execute("""
-            SELECT id, username, email, password, role
+            SELECT id, username, email, password, role, photo
             FROM users
             WHERE email = %s
         """, (email,))
@@ -271,6 +281,7 @@ def login():
         session["username"] = user[1]
         session["email"] = user[2]
         session["role"] = user[4]
+        session["photo"] = user[5]
 
         # Redirect berdasarkan role
         if user[4] == "admin":
@@ -299,7 +310,7 @@ def forgot_password():
 
     if request.method == "POST":
 
-        email = request.form["email"]
+        email = request.form["email"].strip()
 
         conn = get_connection()
         cursor = conn.cursor()
@@ -311,32 +322,221 @@ def forgot_password():
 
         user = cursor.fetchone()
 
-        cursor.close()
-        conn.close()
-
         # email tidak ditemukan
         if not user:
-
+            cursor.close()
+            conn.close()
             return render_template(
                 "public/forgot_password.html",
                 error="Email tidak ditemukan"
             )
 
+        # Buat token acak & waktu kedaluwarsa (1 jam)
+        token = secrets.token_urlsafe(48)
+        expires_at = datetime.now() + timedelta(hours=1)
+
+        # Hapus token lama email ini, lalu simpan token baru
+        cursor.execute(
+            "DELETE FROM password_resets WHERE email=%s",
+            (email,)
+        )
+        cursor.execute(
+            """
+            INSERT INTO password_resets (email, token, expires_at)
+            VALUES (%s, %s, %s)
+            """,
+            (email, token, expires_at)
+        )
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        # Kirim email berisi link reset
+        reset_link = url_for(
+            "reset_password",
+            token=token,
+            _external=True
+        )
+
+        sent, err = send_reset_email(email, reset_link)
+
+        if not sent:
+            return render_template(
+                "public/forgot_password.html",
+                error=f"Gagal mengirim email: {err}"
+            )
+
         return render_template(
             "public/forgot_password.html",
-            success="Fitur reset password akan dikirim ke email"
+            success="Link reset password telah dikirim ke email Anda. "
+                    "Silakan cek inbox (atau folder spam)."
         )
 
     return render_template("public/forgot_password.html")
 
+
+# =====================================================
+# RESET PASSWORD
+# =====================================================
+@app.route("/reset-password/<token>", methods=["GET", "POST"])
+def reset_password(token):
+
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    # Validasi token
+    cursor.execute(
+        """
+        SELECT id, email, expires_at, used
+        FROM password_resets
+        WHERE token=%s
+        """,
+        (token,)
+    )
+    row = cursor.fetchone()
+
+    # Token tidak valid / sudah dipakai / kedaluwarsa
+    if (
+        not row
+        or row[3] == 1
+        or row[2] < datetime.now()
+    ):
+        cursor.close()
+        conn.close()
+        return render_template(
+            "public/reset_password.html",
+            invalid=True,
+            error="Link reset tidak valid atau sudah kedaluwarsa. "
+                  "Silakan ajukan ulang."
+        )
+
+    reset_id = row[0]
+    email = row[1]
+
+    if request.method == "POST":
+
+        new_password = request.form["new_password"].strip()
+        confirm_password = request.form["confirm_password"].strip()
+
+        if len(new_password) < 6:
+            cursor.close()
+            conn.close()
+            return render_template(
+                "public/reset_password.html",
+                token=token,
+                error="Password minimal 6 karakter."
+            )
+
+        if new_password != confirm_password:
+            cursor.close()
+            conn.close()
+            return render_template(
+                "public/reset_password.html",
+                token=token,
+                error="Konfirmasi password tidak cocok."
+            )
+
+        hashed_password = generate_password_hash(new_password)
+
+        # Update password user
+        cursor.execute(
+            "UPDATE users SET password=%s WHERE email=%s",
+            (hashed_password, email)
+        )
+
+        # Tandai token sudah dipakai
+        cursor.execute(
+            "UPDATE password_resets SET used=1 WHERE id=%s",
+            (reset_id,)
+        )
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        flash(
+            "Password berhasil direset. Silakan login dengan password baru.",
+            "success"
+        )
+        return redirect(url_for("login"))
+
+    cursor.close()
+    conn.close()
+
+    return render_template(
+        "public/reset_password.html",
+        token=token
+    )
+
 # =====================================================
 # HALAMAN PROFILE PUBLIK
 # =====================================================
+# =====================================================
+# HELPER UPLOAD FOTO PROFIL
+# =====================================================
+
+def load_session_photo():
+    """
+    Pastikan session['photo'] terisi dari database
+    (untuk sesi lama yang login sebelum fitur foto ada).
+    """
+
+    if session.get('photo') is not None:
+        return
+
+    if 'user_id' not in session:
+        return
+
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        "SELECT photo FROM users WHERE id=%s",
+        (session['user_id'],)
+    )
+
+    row = cursor.fetchone()
+
+    cursor.close()
+    conn.close()
+
+    if row:
+        session['photo'] = row[0]
+
+
+def save_profile_photo():
+    """
+    Simpan foto profil yang diupload (field form 'photo').
+    Mengembalikan nama file jika ada upload, atau None bila tidak.
+    """
+
+    photo = request.files.get("photo")
+
+    if not photo or photo.filename == "":
+        return None
+
+    filename = secure_filename(photo.filename)
+
+    upload_folder = os.path.join(
+        app.root_path,
+        "static/uploads/users"
+    )
+
+    os.makedirs(upload_folder, exist_ok=True)
+
+    photo.save(
+        os.path.join(upload_folder, filename)
+    )
+
+    return filename
+
+
 @app.route('/user-profile')
 def public_profile():
 
     if 'user_id' not in session:
         return redirect(url_for('login'))
+
+    load_session_photo()
 
     return render_template(
         'public/profile.html'
@@ -383,16 +583,36 @@ def update_public_profile():
             url_for('public_profile')
         )
 
-    cursor.execute("""
-        UPDATE users
-        SET username=%s,
-            email=%s
-        WHERE id=%s
-    """, (
-        username,
-        email,
-        session['user_id']
-    ))
+    # upload foto baru (opsional)
+    photo_name = save_profile_photo()
+
+    if photo_name:
+
+        cursor.execute("""
+            UPDATE users
+            SET username=%s,
+                email=%s,
+                photo=%s
+            WHERE id=%s
+        """, (
+            username,
+            email,
+            photo_name,
+            session['user_id']
+        ))
+
+    else:
+
+        cursor.execute("""
+            UPDATE users
+            SET username=%s,
+                email=%s
+            WHERE id=%s
+        """, (
+            username,
+            email,
+            session['user_id']
+        ))
 
     conn.commit()
 
@@ -401,6 +621,9 @@ def update_public_profile():
 
     session['username'] = username
     session['email'] = email
+
+    if photo_name:
+        session['photo'] = photo_name
 
     flash(
         'Profil berhasil diperbarui.',
@@ -566,6 +789,55 @@ def process_sentiment_analysis(text):
 # =====================================================
 # HALAMAN UTAMA USER LOGIN
 # =====================================================
+@app.before_request
+def ensure_session_photo():
+    """Isi session['photo'] sekali per sesi agar avatar tampil di semua halaman."""
+    if session.get('user_id') and 'photo' not in session:
+        try:
+            load_session_photo()
+        except Exception:
+            pass
+
+
+def get_landing_stats():
+    """Statistik dataset & performa model dari database (bukan dummy)."""
+
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT label, COUNT(*)
+        FROM preprocessing
+        GROUP BY label
+    """)
+    counts = dict(cursor.fetchall())
+
+    cursor.close()
+    conn.close()
+
+    total_positif = counts.get('positif', 0)
+    total_negatif = counts.get('negatif', 0)
+    total_netral = counts.get('netral', 0)
+    total_dataset = total_positif + total_negatif + total_netral
+
+    try:
+        bundle = get_tfidf_model()
+        metrics = evaluate_tfidf_model(bundle)
+    except Exception:
+        metrics = {'accuracy': 0, 'precision': 0, 'recall': 0, 'f1': 0}
+
+    return {
+        'total_dataset': total_dataset,
+        'total_positif': total_positif,
+        'total_negatif': total_negatif,
+        'total_netral': total_netral,
+        'accuracy': metrics['accuracy'],
+        'precision': metrics['precision'],
+        'recall': metrics['recall'],
+        'f1_score': metrics['f1'],
+    }
+
+
 @app.route("/", methods=["GET", "POST"])
 @login_required
 def index():
@@ -577,6 +849,8 @@ def index():
 
     positif_score = 0
     negatif_score = 0
+
+    not_ready = False
 
     if request.method == "POST":
 
@@ -602,6 +876,26 @@ def index():
             result = result_data["label"]
 
             scores = result_data["scores"]
+
+            # =====================
+            # CEK MODEL SIAP
+            # =====================
+
+            if result.lower() not in ("positif", "negatif"):
+
+                not_ready = True
+                result = None
+
+                return render_template(
+                    "public/index.html",
+                    result=None,
+                    text=text,
+                    scores={},
+                    positif_score=0,
+                    negatif_score=0,
+                    not_ready=True,
+                    role=session.get("role")
+                )
 
             positif_score = scores.get(
                 "positif",
@@ -681,6 +975,10 @@ def index():
         positif_score=positif_score,
         negatif_score=negatif_score,
 
+        not_ready=not_ready,
+
+        stats=get_landing_stats(),
+
         role=session.get("role")
     )
 
@@ -697,9 +995,12 @@ def sentiment():
     scores = {}
 
     detail = None
+    posterior = None
 
     positif_score = 0
     negatif_score = 0
+
+    not_ready = False
 
     if request.method == "POST":
 
@@ -718,13 +1019,36 @@ def sentiment():
                 tokens
             )
 
+            result = result_data["label"]
+
+            scores = result_data["scores"]
+
+            # =====================
+            # CEK MODEL SIAP
+            # =====================
+
+            if result.lower() not in ("positif", "negatif"):
+
+                return render_template(
+                    "public/sentiment.html",
+                    result=None,
+                    text=text,
+                    scores={},
+                    positif_score=0,
+                    negatif_score=0,
+                    detail=None,
+                    posterior=None,
+                    not_ready=True,
+                    role=session.get("role")
+                )
+
             detail = get_analysis_detail(
                 text
             )
 
-            result = result_data["label"]
-
-            scores = result_data["scores"]
+            # rincian perhitungan posterior (hanya untuk user login)
+            if session.get('login'):
+                posterior = build_posterior_detail(text)
 
             positif_score = scores.get(
                 "positif",
@@ -739,55 +1063,61 @@ def sentiment():
 
             # =====================
             # SIMPAN HISTORI
+            # (hanya jika model menghasilkan prediksi valid)
             # =====================
 
-            hasil_db = (
-                "Positif"
-                if result.lower() == "positif"
-                else "Negatif"
-            )
+            if result.lower() in ("positif", "negatif"):
 
-            try:
-
-                conn = get_connection()
-                cursor = conn.cursor()
-
-                cursor.execute("""
-                    INSERT INTO hasil_analisis
-                    (
-                        user_id,
-                        teks,
-                        hasil
-                    )
-                    VALUES
-                    (
-                        %s,
-                        %s,
-                        %s
-                    )
-                """, (
-                    session.get("user_id"),  # None jika guest
-                    text,
-                    hasil_db
-                ))
-
-                conn.commit()
-
-                print("Histori publik berhasil disimpan")
-
-            except Exception as e:
-
-                print(
-                    f"Error simpan histori publik: {e}"
+                hasil_db = (
+                    "Positif"
+                    if result.lower() == "positif"
+                    else "Negatif"
                 )
 
-            finally:
+                conn = None
+                cursor = None
 
-                if cursor:
-                    cursor.close()
+                try:
 
-                if conn:
-                    conn.close()
+                    conn = get_connection()
+                    cursor = conn.cursor()
+
+                    cursor.execute("""
+                        INSERT INTO hasil_analisis
+                        (
+                            user_id,
+                            teks,
+                            hasil
+                        )
+                        VALUES
+                        (
+                            %s,
+                            %s,
+                            %s
+                        )
+                    """, (
+                        session.get("user_id"),  # None jika guest
+                        text,
+                        hasil_db
+                    ))
+
+                    conn.commit()
+
+                    print("Histori publik berhasil disimpan")
+
+                except Exception as e:
+
+                    print(
+                        f"Error simpan histori publik: {e}"
+                    )
+
+                finally:
+
+                    if cursor:
+                        cursor.close()
+
+                    if conn:
+                        conn.close()
 
     return render_template(
     "public/sentiment.html",
@@ -801,6 +1131,9 @@ def sentiment():
     negatif_score=negatif_score,
 
     detail=detail,
+    posterior=posterior,
+
+    not_ready=not_ready,
 
     role=session.get("role")
 )
@@ -1092,7 +1425,13 @@ def predict(tokens):
             "scores": {}
         }
 
-    model, vectorizer = train_model()
+    try:
+        model, vectorizer = train_model()
+    except DataNotReadyError:
+        return {
+            "label": "Model belum siap",
+            "scores": {}
+        }
 
     text = " ".join(tokens)
 
@@ -1227,43 +1566,48 @@ def get_analysis_detail(text):
         )
 
     # TFIDF
-    model, vectorizer = train_model()
-
-    final_text = " ".join(
-        stemmed_words
-    )
-
-    tfidf_vector = vectorizer.transform(
-        [final_text]
-    )
-
-    feature_names = vectorizer.get_feature_names_out()
-
-    weights = tfidf_vector.toarray()[0]
-
     tfidf_words = []
 
-    for i, score in enumerate(weights):
+    try:
+        model, vectorizer = train_model()
 
-        if score > 0:
+        final_text = " ".join(
+            stemmed_words
+        )
 
-            tfidf_words.append({
+        tfidf_vector = vectorizer.transform(
+            [final_text]
+        )
 
-                'word':
-                feature_names[i],
+        feature_names = vectorizer.get_feature_names_out()
 
-                'score':
-                round(
-                    float(score),
-                    4
-                )
-            })
+        weights = tfidf_vector.toarray()[0]
 
-    tfidf_words = sorted(
-        tfidf_words,
-        key=lambda x: x['score'],
-        reverse=True
-    )[:10]
+        for i, score in enumerate(weights):
+
+            if score > 0:
+
+                tfidf_words.append({
+
+                    'word':
+                    feature_names[i],
+
+                    'score':
+                    round(
+                        float(score),
+                        4
+                    )
+                })
+
+        tfidf_words = sorted(
+            tfidf_words,
+            key=lambda x: x['score'],
+            reverse=True
+        )[:10]
+
+    except DataNotReadyError:
+        # Model belum dilatih: tampilkan detail preprocessing tanpa TF-IDF
+        tfidf_words = []
 
     return {
 
@@ -1603,6 +1947,7 @@ def dashboard():
 @app.route('/profile')
 @login_required
 def profile():
+    load_session_photo()
     return render_template(
         'admin/main/profile.html'
     )
@@ -1643,17 +1988,36 @@ def update_profile():
 
         return redirect('/profile')
 
-    # update data
-    cursor.execute("""
-        UPDATE users
-        SET username=%s,
-            email=%s
-        WHERE id=%s
-    """, (
-        username,
-        email,
-        session['user_id']
-    ))
+    # upload foto baru (opsional)
+    photo_name = save_profile_photo()
+
+    if photo_name:
+
+        cursor.execute("""
+            UPDATE users
+            SET username=%s,
+                email=%s,
+                photo=%s
+            WHERE id=%s
+        """, (
+            username,
+            email,
+            photo_name,
+            session['user_id']
+        ))
+
+    else:
+
+        cursor.execute("""
+            UPDATE users
+            SET username=%s,
+                email=%s
+            WHERE id=%s
+        """, (
+            username,
+            email,
+            session['user_id']
+        ))
 
     conn.commit()
 
@@ -1663,6 +2027,9 @@ def update_profile():
     # update session
     session['username'] = username
     session['email'] = email
+
+    if photo_name:
+        session['photo'] = photo_name
 
     flash('Profil berhasil diperbarui.', 'success')
 
@@ -1883,10 +2250,15 @@ def edit_user(id):
 
     if request.method == "POST":
 
-        username = request.form["username"]
-        email = request.form["email"]
-        role = request.form["role"]
+        username = request.form.get("username", "").strip()
+        email = request.form.get("email", "").strip()
+        role = request.form.get("role", user[3])
         password = request.form.get("password")
+
+        # role admin tidak boleh diubah (select-nya disabled di form,
+        # sehingga tidak ikut terkirim)
+        if user[3] == "admin":
+            role = "admin"
 
         photo = request.files.get("photo")
 
@@ -2153,12 +2525,33 @@ def import_data():
     # NORMALISASI KOLOM
     df.columns = df.columns.str.strip().str.lower()
 
-    required_columns = ['content', 'label']
+    # KOLOM CONTENT WAJIB
+    if 'content' not in df.columns:
+        flash('Kolom content tidak ditemukan pada file Excel')
+        return redirect('/preprocessing')
 
-    for col in required_columns:
-        if col not in df.columns:
-            flash(f'Kolom {col} tidak ditemukan pada file Excel')
-            return redirect('/preprocessing')
+    # LABEL: PAKAI KOLOM 'label' BILA ADA,
+    # JIKA TIDAK TURUNKAN DARI 'score' (rating)
+    # 4-5 = positif, 3 = netral, 1-2 = negatif
+    has_label = 'label' in df.columns
+    has_score = 'score' in df.columns
+
+    if not has_label and not has_score:
+        flash('Kolom label atau score tidak ditemukan pada file Excel')
+        return redirect('/preprocessing')
+
+    def label_from_score(value):
+        try:
+            score = float(value)
+        except (ValueError, TypeError):
+            return None
+
+        if score >= 4:
+            return 'positif'
+        elif score == 3:
+            return 'netral'
+        else:
+            return 'negatif'
 
     conn = get_connection()
     cursor = conn.cursor()
@@ -2166,9 +2559,16 @@ def import_data():
     for _, row in df.iterrows():
 
         content = str(row['content']).strip()
-        label = str(row['label']).strip().lower()
 
-        if not content:
+        if has_label:
+            label = str(row['label']).strip().lower()
+        else:
+            label = label_from_score(row['score'])
+
+        if not content or content.lower() == 'nan':
+            continue
+
+        if not label:
             continue
 
         cursor.execute(
@@ -2211,10 +2611,18 @@ def process_preprocessing():
 
     negasi = ['tidak', 'bukan', 'jangan', 'belum', 'kurang']
 
-    custom_stopwords = [
+    custom_stopwords = {
         word for word in stop_words
         if word not in negasi
-    ]
+    }
+
+    # CACHE STEMMING: kata yang sama cukup di-stem sekali
+    stem_cache = {}
+
+    def stem_word(word):
+        if word not in stem_cache:
+            stem_cache[word] = stemmer.stem(word)
+        return stem_cache[word]
 
     for item in data:
 
@@ -2326,7 +2734,7 @@ def process_preprocessing():
 
         for word in filtered_words:
 
-            stemmed_word = stemmer.stem(word)
+            stemmed_word = stem_word(word)
 
             stemmed_words.append(stemmed_word)
 
@@ -2582,6 +2990,11 @@ def split_data():
 # =========================================
 
 
+class DataNotReadyError(Exception):
+    """Data preprocessing belum siap untuk klasifikasi."""
+    pass
+
+
 def get_split_data():
 
     test_size = session.get('test_size', 0.2)
@@ -2604,6 +3017,13 @@ def get_split_data():
 
     texts = [row[0] for row in data]
     labels = [row[1] for row in data]
+
+    # VALIDASI: DATA HARUS SUDAH DIPREPROCESSING & CUKUP
+    if len(texts) < 2 or len(set(labels)) < 2:
+        raise DataNotReadyError(
+            'Data belum siap. Pastikan dataset sudah diimport, '
+            'diproses (preprocessing), dan memiliki kelas Positif & Negatif.'
+        )
 
     X_train, X_test, y_train, y_test = train_test_split(
         texts,
@@ -2671,7 +3091,13 @@ def predict(tokens):
             "scores": {}
         }
 
-    model, vectorizer = train_model()
+    try:
+        model, vectorizer = train_model()
+    except DataNotReadyError:
+        return {
+            "label": "Model belum siap",
+            "scores": {}
+        }
 
     text = " ".join(tokens)
 
@@ -2709,7 +3135,11 @@ def predict(tokens):
 @admin_required
 def tfidf():
 
-    X_train, X_test, y_train, y_test = get_split_data()
+    try:
+        X_train, X_test, y_train, y_test = get_split_data()
+    except DataNotReadyError as e:
+        flash(str(e), 'warning')
+        return redirect('/preprocessing')
 
     vectorizer = get_vectorizer()
 
@@ -2738,11 +3168,324 @@ def tfidf():
     )
 
 
+# =========================================
+# NAIVE BAYES MANUAL (PRIOR, LIKELIHOOD, POSTERIOR)
+# DISELARASKAN DENGAN MODEL TF-IDF + MultinomialNB
+# agar hasil manual == hasil menu Evaluation.
+#
+# Menggunakan internal sklearn MultinomialNB yang sudah dilatih
+# pada data latih (train split) dengan fitur TF-IDF:
+#   Prior      : P(H)        = exp(model.class_log_prior_)
+#   Likelihood : P(fitur|H)  = exp(model.feature_log_prob_)
+#   Posterior  : P(H|X)      = model.predict_proba(tfidf(X))
+# =========================================
+
+def get_tfidf_model():
+    """
+    Melatih model TF-IDF + MultinomialNB pada data latih,
+    PERSIS seperti menu Prediction & Evaluation (random_state=42).
+    Mengembalikan model, vectorizer, dan split datanya.
+    """
+    import numpy as np
+
+    X_train, X_test, y_train, y_test = get_split_data()
+
+    vectorizer = get_vectorizer()
+    X_train_tfidf = vectorizer.fit_transform(X_train)
+
+    model = MultinomialNB()
+    model.fit(X_train_tfidf, y_train)
+
+    # peta nama kelas -> index pada model.classes_
+    classes = list(model_classes(model))
+    class_index = {c: i for i, c in enumerate(classes)}
+
+    priors = {
+        c: float(np.exp(model.class_log_prior_[class_index[c]]))
+        for c in ('positif', 'negatif')
+    }
+
+    return {
+        'model': model,
+        'vectorizer': vectorizer,
+        'X_train': X_train,
+        'X_test': X_test,
+        'y_train': y_train,
+        'y_test': y_test,
+        'priors': priors,
+        'class_index': class_index,
+        'feature_names': vectorizer.get_feature_names_out(),
+    }
+
+
+def model_classes(model):
+    return model.classes_
+
+
+def evaluate_tfidf_model(bundle):
+    """
+    Evaluasi model TF-IDF pada DATA UJI (test split) -> identik dengan
+    angka pada menu Evaluation.
+    """
+    model = bundle['model']
+    vectorizer = bundle['vectorizer']
+    X_test = bundle['X_test']
+    y_test = bundle['y_test']
+
+    predictions = model.predict(vectorizer.transform(X_test))
+
+    labels = ['positif', 'negatif']
+
+    return {
+        'accuracy': round(accuracy_score(y_test, predictions) * 100, 2),
+        'precision': round(precision_score(y_test, predictions, average='weighted', zero_division=0) * 100, 2),
+        'recall': round(recall_score(y_test, predictions, average='weighted', zero_division=0) * 100, 2),
+        'f1': round(f1_score(y_test, predictions, average='weighted', zero_division=0) * 100, 2),
+        'total': len(y_test),
+        'cm': confusion_matrix(y_test, predictions, labels=labels).tolist(),
+        'labels': labels,
+    }
+
+
+def build_posterior_detail(text):
+    """
+    Bangun rincian perhitungan posterior (prior, kontribusi tiap fitur,
+    posterior %, prediksi) untuk satu teks ulasan.
+    Mengembalikan dict, atau None bila model belum siap / teks kosong.
+    Dipakai bersama menu Posterior admin & halaman analisis publik.
+    """
+    import numpy as np
+
+    if not text:
+        return None
+
+    try:
+        bundle = get_tfidf_model()
+    except DataNotReadyError:
+        return None
+
+    model = bundle['model']
+    vectorizer = bundle['vectorizer']
+    feature_names = bundle['feature_names']
+    ci = bundle['class_index']
+
+    lh_pos_all = np.exp(model.feature_log_prob_[ci['positif']])
+    lh_neg_all = np.exp(model.feature_log_prob_[ci['negatif']])
+
+    tokens = preprocess_text(text)
+    joined = " ".join(tokens)
+
+    vec = vectorizer.transform([joined])
+
+    proba = model.predict_proba(vec)[0]
+    pred = model.predict(vec)[0]
+    jll = model._joint_log_likelihood(vec)[0]
+
+    detail_rows = []
+    for idx, weight in zip(vec.indices, vec.data):
+        detail_rows.append({
+            'word': feature_names[idx],
+            'weight': float(weight),
+            'lh_pos': float(lh_pos_all[idx]),
+            'lh_neg': float(lh_neg_all[idx]),
+        })
+    detail_rows.sort(key=lambda r: r['weight'], reverse=True)
+
+    return {
+        'tokens': tokens,
+        'priors': bundle['priors'],
+        'detail_rows': detail_rows,
+        'posteriors': {
+            'positif': {
+                'raw': float(jll[ci['positif']]),
+                'persen': float(proba[ci['positif']] * 100),
+            },
+            'negatif': {
+                'raw': float(jll[ci['negatif']]),
+                'persen': float(proba[ci['negatif']] * 100),
+            },
+        },
+        'predicted': pred.capitalize() if pred and pred != '-' else pred,
+    }
+
+
+@app.route('/classification/prior')
+@admin_required
+def prior():
+
+    from collections import Counter
+
+    try:
+        bundle = get_tfidf_model()
+    except DataNotReadyError as e:
+        flash(str(e), 'warning')
+        return redirect('/preprocessing')
+
+    # prior model dihitung dari data latih (train split)
+    counts = Counter(bundle['y_train'])
+    total = len(bundle['y_train'])
+
+    rows = []
+    for kelas in ('positif', 'negatif'):
+        rows.append({
+            'kelas': kelas.capitalize(),
+            'jumlah': counts.get(kelas, 0),
+            'total': total,
+            'prior': bundle['priors'][kelas],
+        })
+
+    return render_template(
+        'admin/classification/prior.html',
+        rows=rows,
+        total_docs=total,
+    )
+
+
+@app.route('/classification/likelihood')
+@admin_required
+def likelihood_view():
+
+    import numpy as np
+
+    try:
+        bundle = get_tfidf_model()
+    except DataNotReadyError as e:
+        flash(str(e), 'warning')
+        return redirect('/preprocessing')
+
+    model = bundle['model']
+    vectorizer = bundle['vectorizer']
+    feature_names = bundle['feature_names']
+    ci = bundle['class_index']
+
+    # P(fitur|kelas) = exp(feature_log_prob_)
+    lh_pos_all = np.exp(model.feature_log_prob_[ci['positif']])
+    lh_neg_all = np.exp(model.feature_log_prob_[ci['negatif']])
+
+    text = request.args.get('text', '').strip()
+
+    rows = []
+
+    if text:
+        # fitur (kata/bigram) yang muncul pada teks input + bobot TF-IDF nya
+        joined = " ".join(preprocess_text(text))
+        vec = vectorizer.transform([joined])
+        for idx, weight in zip(vec.indices, vec.data):
+            rows.append({
+                'word': feature_names[idx],
+                'weight': float(weight),
+                'lh_pos': float(lh_pos_all[idx]),
+                'lh_neg': float(lh_neg_all[idx]),
+            })
+        rows.sort(key=lambda r: r['weight'], reverse=True)
+    else:
+        # Default: 20 fitur dengan P(fitur|Positif) tertinggi
+        top_idx = np.argsort(lh_pos_all)[::-1][:20]
+        for idx in top_idx:
+            rows.append({
+                'word': feature_names[idx],
+                'weight': None,
+                'lh_pos': float(lh_pos_all[idx]),
+                'lh_neg': float(lh_neg_all[idx]),
+            })
+
+    return render_template(
+        'admin/classification/likelihood.html',
+        rows=rows,
+        text=text,
+        n_features=len(feature_names),
+    )
+
+
+@app.route('/classification/posterior')
+@admin_required
+def posterior_view():
+
+    import numpy as np
+
+    try:
+        bundle = get_tfidf_model()
+        metrics = evaluate_tfidf_model(bundle)
+    except DataNotReadyError as e:
+        flash(str(e), 'warning')
+        return redirect('/preprocessing')
+
+    model = bundle['model']
+    vectorizer = bundle['vectorizer']
+    feature_names = bundle['feature_names']
+    ci = bundle['class_index']
+    priors = bundle['priors']
+
+    lh_pos_all = np.exp(model.feature_log_prob_[ci['positif']])
+    lh_neg_all = np.exp(model.feature_log_prob_[ci['negatif']])
+
+    text = request.args.get('text', '').strip()
+
+    detail_rows = []
+    posteriors = {}
+    predicted = None
+    tokens = []
+
+    if text:
+        tokens = preprocess_text(text)
+        joined = " ".join(tokens)
+
+        vec = vectorizer.transform([joined])
+
+        # posterior = model TF-IDF (sama persis dgn prediksi sistem)
+        proba = model.predict_proba(vec)[0]
+        pred = model.predict(vec)[0]
+
+        pos_persen = float(proba[ci['positif']] * 100)
+        neg_persen = float(proba[ci['negatif']] * 100)
+
+        # joint log-likelihood (skor mentah sebelum normalisasi)
+        jll = model._joint_log_likelihood(vec)[0]
+
+        predicted = pred
+
+        # detail kontribusi tiap fitur (bobot TF-IDF x likelihood)
+        for idx, weight in zip(vec.indices, vec.data):
+            detail_rows.append({
+                'word': feature_names[idx],
+                'weight': float(weight),
+                'lh_pos': float(lh_pos_all[idx]),
+                'lh_neg': float(lh_neg_all[idx]),
+            })
+        detail_rows.sort(key=lambda r: r['weight'], reverse=True)
+
+        posteriors = {
+            'positif': {
+                'raw': float(jll[ci['positif']]),
+                'persen': pos_persen,
+            },
+            'negatif': {
+                'raw': float(jll[ci['negatif']]),
+                'persen': neg_persen,
+            },
+        }
+
+    return render_template(
+        'admin/classification/posterior.html',
+        text=text,
+        tokens=tokens,
+        priors=priors,
+        detail_rows=detail_rows,
+        posteriors=posteriors,
+        predicted=(predicted.capitalize() if predicted and predicted != '-' else predicted),
+        metrics=metrics,
+    )
+
+
 @app.route('/classification/prediction')
 @admin_required
 def prediction():
 
-    X_train, X_test, y_train, y_test = get_split_data()
+    try:
+        X_train, X_test, y_train, y_test = get_split_data()
+    except DataNotReadyError as e:
+        flash(str(e), 'warning')
+        return redirect('/preprocessing')
 
     vectorizer = get_vectorizer()
 
@@ -2776,7 +3519,11 @@ def prediction():
 def evaluation():
 
     # Dataset Split
-    X_train, X_test, y_train, y_test = get_split_data()
+    try:
+        X_train, X_test, y_train, y_test = get_split_data()
+    except DataNotReadyError as e:
+        flash(str(e), 'warning')
+        return redirect('/preprocessing')
 
     # Filter hanya Positif dan Negatif
     train_data = [
@@ -2872,6 +3619,197 @@ def evaluation():
         recall=recall,
         f1_score=f1_score_value,
         cm=cm.tolist()
+    )
+
+
+# =====================================================
+# PERHITUNGAN MANUAL PUBLIK
+# (untuk pengguna yang sudah login — tanpa manajemen user)
+# Datanya realtime mengikuti dataset yang dikelola admin.
+# =====================================================
+
+@app.route('/perhitungan/tfidf')
+@login_required
+def public_tfidf():
+
+    try:
+        X_train, X_test, y_train, y_test = get_split_data()
+    except DataNotReadyError:
+        return render_template(
+            'public/classification/tfidf.html',
+            not_ready=True
+        )
+
+    vectorizer = get_vectorizer()
+    X_train_tfidf = vectorizer.fit_transform(X_train)
+
+    feature_names = vectorizer.get_feature_names_out()
+
+    tfidf_df = pd.DataFrame.sparse.from_spmatrix(
+        X_train_tfidf,
+        columns=feature_names
+    )
+
+    preview = tfidf_df.head(20)
+
+    return render_template(
+        'public/classification/tfidf.html',
+        not_ready=False,
+        tables=preview.values.tolist(),
+        columns=preview.columns.tolist(),
+        total_documents=len(X_train),
+        total_terms=len(feature_names)
+    )
+
+
+@app.route('/perhitungan/prior')
+@login_required
+def public_prior():
+
+    from collections import Counter
+
+    try:
+        bundle = get_tfidf_model()
+    except DataNotReadyError:
+        return render_template(
+            'public/classification/prior.html',
+            not_ready=True
+        )
+
+    counts = Counter(bundle['y_train'])
+    total = len(bundle['y_train'])
+
+    rows = []
+    for kelas in ('positif', 'negatif'):
+        rows.append({
+            'kelas': kelas.capitalize(),
+            'jumlah': counts.get(kelas, 0),
+            'total': total,
+            'prior': bundle['priors'][kelas],
+        })
+
+    return render_template(
+        'public/classification/prior.html',
+        not_ready=False,
+        rows=rows,
+        total_docs=total,
+    )
+
+
+@app.route('/perhitungan/likelihood')
+@login_required
+def public_likelihood():
+
+    import numpy as np
+
+    try:
+        bundle = get_tfidf_model()
+    except DataNotReadyError:
+        return render_template(
+            'public/classification/likelihood.html',
+            not_ready=True
+        )
+
+    model = bundle['model']
+    vectorizer = bundle['vectorizer']
+    feature_names = bundle['feature_names']
+    ci = bundle['class_index']
+
+    lh_pos_all = np.exp(model.feature_log_prob_[ci['positif']])
+    lh_neg_all = np.exp(model.feature_log_prob_[ci['negatif']])
+
+    text = request.args.get('text', '').strip()
+
+    rows = []
+
+    if text:
+        joined = " ".join(preprocess_text(text))
+        vec = vectorizer.transform([joined])
+        for idx, weight in zip(vec.indices, vec.data):
+            rows.append({
+                'word': feature_names[idx],
+                'weight': float(weight),
+                'lh_pos': float(lh_pos_all[idx]),
+                'lh_neg': float(lh_neg_all[idx]),
+            })
+        rows.sort(key=lambda r: r['weight'], reverse=True)
+    else:
+        top_idx = np.argsort(lh_pos_all)[::-1][:20]
+        for idx in top_idx:
+            rows.append({
+                'word': feature_names[idx],
+                'weight': None,
+                'lh_pos': float(lh_pos_all[idx]),
+                'lh_neg': float(lh_neg_all[idx]),
+            })
+
+    return render_template(
+        'public/classification/likelihood.html',
+        not_ready=False,
+        rows=rows,
+        text=text,
+        n_features=len(feature_names),
+    )
+
+
+@app.route('/perhitungan/prediction')
+@login_required
+def public_prediction():
+
+    try:
+        X_train, X_test, y_train, y_test = get_split_data()
+    except DataNotReadyError:
+        return render_template(
+            'public/classification/prediction.html',
+            not_ready=True
+        )
+
+    vectorizer = get_vectorizer()
+
+    X_train_tfidf = vectorizer.fit_transform(X_train)
+    X_test_tfidf = vectorizer.transform(X_test)
+
+    model = MultinomialNB()
+    model.fit(X_train_tfidf, y_train)
+
+    predictions = model.predict(X_test_tfidf)
+
+    results = []
+    for i in range(len(X_test)):
+        results.append({
+            'text': X_test[i],
+            'actual': y_test[i],
+            'prediction': predictions[i]
+        })
+
+    return render_template(
+        'public/classification/prediction.html',
+        not_ready=False,
+        results=results
+    )
+
+
+@app.route('/perhitungan/evaluation')
+@login_required
+def public_evaluation():
+
+    try:
+        bundle = get_tfidf_model()
+        metrics = evaluate_tfidf_model(bundle)
+    except DataNotReadyError:
+        return render_template(
+            'public/classification/evaluation.html',
+            not_ready=True
+        )
+
+    return render_template(
+        'public/classification/evaluation.html',
+        not_ready=False,
+        accuracy=metrics['accuracy'],
+        precision=metrics['precision'],
+        recall=metrics['recall'],
+        f1_score=metrics['f1'],
+        cm=metrics['cm']
     )
 
 

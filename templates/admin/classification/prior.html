@@ -1,0 +1,57 @@
+{% extends 'layouts/admin.html' %}
+
+{% block content %}
+
+<div class="mb-6">
+
+    <div class="bg-white rounded-3xl shadow-lg p-6">
+
+        <h1 class="text-3xl font-bold text-gray-800 mb-2">
+            Prior Awal &mdash; P(H)
+        </h1>
+
+        <p class="text-gray-500">
+            Probabilitas awal tiap kelas sentimen sebelum melihat kata pada ulasan.
+            <br>
+            <span class="font-mono text-sm">
+                P(Kelas) = Jumlah data kelas / Total data
+            </span>
+        </p>
+
+        <div class="mt-5 flex flex-wrap gap-4">
+            <div class="bg-blue-50 text-blue-700 px-5 py-3 rounded-2xl">
+                Total Data Latih:
+                <span class="font-bold">{{ total_docs }}</span>
+            </div>
+        </div>
+
+    </div>
+
+</div>
+
+<div class="bg-white rounded-3xl shadow-lg p-6 overflow-auto">
+
+    <table class="min-w-full text-sm">
+        <thead>
+            <tr class="bg-gray-100">
+                <th class="px-4 py-3 border">Kelas</th>
+                <th class="px-4 py-3 border">Jumlah Data</th>
+                <th class="px-4 py-3 border">Total Data</th>
+                <th class="px-4 py-3 border">Prior P(H)</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in rows %}
+            <tr>
+                <td class="px-4 py-3 border font-semibold">{{ row.kelas }}</td>
+                <td class="px-4 py-3 border">{{ row.jumlah }}</td>
+                <td class="px-4 py-3 border">{{ row.total }}</td>
+                <td class="px-4 py-3 border font-mono">{{ "%.5f"|format(row.prior) }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+</div>
+
+{% endblock %}

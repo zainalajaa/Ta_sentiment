@@ -1,0 +1,70 @@
+{% extends 'layouts/public_base.html' %}
+
+{% block title %}Prior P(H){% endblock %}
+
+{% block content %}
+
+<section class="hero-bg min-h-screen pt-28 pb-20">
+
+    <div class="max-w-5xl mx-auto px-6">
+
+        <div class="text-center mb-10">
+            <span class="px-4 py-2 rounded-full bg-emerald-500/20 text-emerald-400 text-sm">
+                Perhitungan Manual
+            </span>
+            <h1 class="mt-6 text-4xl md:text-5xl font-bold">Prior Awal &mdash; P(H)</h1>
+            <p class="mt-4 text-slate-400 max-w-2xl mx-auto">
+                Probabilitas awal tiap kelas sebelum melihat kata pada ulasan.
+                <br>
+                <span class="font-mono text-sm text-emerald-400">
+                    P(Kelas) = Jumlah data kelas / Total data
+                </span>
+            </p>
+        </div>
+
+        {% include 'components/public/calc_nav.html' %}
+
+        {% if not_ready %}
+            {% include 'public/classification/_not_ready.html' %}
+        {% else %}
+
+        <div class="glass rounded-2xl p-6 mb-8 inline-block">
+            <p class="text-slate-400 text-sm">Total Data Latih</p>
+            <h3 class="text-3xl font-bold mt-2">{{ total_docs }}</h3>
+        </div>
+
+        <div class="glass rounded-3xl p-6">
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="border-b border-slate-700 text-slate-300">
+                            <th class="text-left p-3">Kelas</th>
+                            <th class="text-left p-3">Jumlah Data</th>
+                            <th class="text-left p-3">Total Data</th>
+                            <th class="text-left p-3">Prior P(H)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for r in rows %}
+                        <tr class="border-b border-slate-800">
+                            <td class="p-3 font-semibold
+                                {% if r.kelas|lower == 'positif' %}text-green-400{% else %}text-red-400{% endif %}">
+                                {{ r.kelas }}
+                            </td>
+                            <td class="p-3">{{ r.jumlah }}</td>
+                            <td class="p-3">{{ r.total }}</td>
+                            <td class="p-3 font-mono text-emerald-400">{{ "%.4f"|format(r.prior) }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        {% endif %}
+
+    </div>
+
+</section>
+
+{% endblock %}

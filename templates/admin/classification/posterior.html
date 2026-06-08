@@ -1,0 +1,184 @@
+{% extends 'layouts/admin.html' %}
+
+{% block content %}
+
+<div class="mb-6">
+
+    <div class="bg-white rounded-3xl shadow-lg p-6">
+
+        <h1 class="text-3xl font-bold text-gray-800 mb-2">
+            Posterior &mdash; P(H|X)
+        </h1>
+
+        <p class="text-gray-500">
+            Probabilitas akhir tiap kelas setelah mempertimbangkan kata pada ulasan.
+            <br>
+            <span class="font-mono text-sm">
+                P(Kelas|Ulasan) = P(Kelas) &times; &prod; P(kata|Kelas)
+            </span>
+        </p>
+
+        <form method="get" class="mt-5 flex gap-3">
+            <input
+                type="text"
+                name="text"
+                value="{{ text }}"
+                placeholder="Ketik ulasan untuk menghitung posterior..."
+                class="flex-1 px-4 py-3 rounded-2xl border border-gray-300
+                       focus:outline-none focus:ring-2 focus:ring-purple-400"
+            >
+            <button type="submit"
+                class="px-6 py-3 rounded-2xl bg-purple-500 hover:bg-purple-600
+                       text-white font-semibold">
+                Hitung
+            </button>
+        </form>
+
+    </div>
+
+</div>
+
+<!-- EVALUASI NAIVE BAYES MANUAL -->
+{% if metrics %}
+<div class="bg-white rounded-3xl shadow-lg p-6 mb-6">
+
+    <h2 class="text-xl font-bold mb-1">
+        Evaluasi Model (TF-IDF + Naive Bayes)
+    </h2>
+    <p class="text-gray-500 text-sm mb-5">
+        Diuji pada data uji hasil train-test split ({{ metrics.total }} ulasan).
+        Angka ini <b>identik</b> dengan menu <b>Evaluation</b> karena memakai
+        model, fitur TF-IDF, dan split yang sama.
+    </p>
+
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <div class="bg-blue-50 text-blue-700 px-5 py-4 rounded-2xl text-center">
+            <div class="text-xs uppercase tracking-wide">Accuracy</div>
+            <div class="text-2xl font-bold">{{ metrics.accuracy }}%</div>
+        </div>
+        <div class="bg-emerald-50 text-emerald-700 px-5 py-4 rounded-2xl text-center">
+            <div class="text-xs uppercase tracking-wide">Precision</div>
+            <div class="text-2xl font-bold">{{ metrics.precision }}%</div>
+        </div>
+        <div class="bg-amber-50 text-amber-700 px-5 py-4 rounded-2xl text-center">
+            <div class="text-xs uppercase tracking-wide">Recall</div>
+            <div class="text-2xl font-bold">{{ metrics.recall }}%</div>
+        </div>
+        <div class="bg-purple-50 text-purple-700 px-5 py-4 rounded-2xl text-center">
+            <div class="text-xs uppercase tracking-wide">F1-Score</div>
+            <div class="text-2xl font-bold">{{ metrics.f1 }}%</div>
+        </div>
+    </div>
+
+    <h3 class="font-bold mb-3">Confusion Matrix</h3>
+    <table class="text-sm border-collapse">
+        <thead>
+            <tr>
+                <th class="px-4 py-2 border bg-gray-100"></th>
+                <th class="px-4 py-2 border bg-gray-100">Pred. Positif</th>
+                <th class="px-4 py-2 border bg-gray-100">Pred. Negatif</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <th class="px-4 py-2 border bg-gray-100 text-left">Aktual Positif</th>
+                <td class="px-4 py-2 border text-center font-mono">{{ metrics.cm[0][0] }}</td>
+                <td class="px-4 py-2 border text-center font-mono">{{ metrics.cm[0][1] }}</td>
+            </tr>
+            <tr>
+                <th class="px-4 py-2 border bg-gray-100 text-left">Aktual Negatif</th>
+                <td class="px-4 py-2 border text-center font-mono">{{ metrics.cm[1][0] }}</td>
+                <td class="px-4 py-2 border text-center font-mono">{{ metrics.cm[1][1] }}</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <p class="mt-4 text-xs text-gray-400">
+        *Perhitungan Prior, Likelihood, dan Posterior di halaman ini memakai
+        model TF-IDF + Naive Bayes yang sama dengan menu Prediction & Evaluation,
+        sehingga hasilnya konsisten/identik.
+    </p>
+
+</div>
+{% endif %}
+
+{% if text %}
+
+<!-- PRIOR -->
+<div class="bg-white rounded-3xl shadow-lg p-6 mb-6">
+    <h2 class="text-xl font-bold mb-4">1. Prior P(H)</h2>
+    <div class="flex flex-wrap gap-4">
+        <div class="bg-emerald-50 text-emerald-700 px-5 py-3 rounded-2xl font-mono">
+            P(Positif) = {{ "%.5f"|format(priors.positif) }}
+        </div>
+        <div class="bg-rose-50 text-rose-700 px-5 py-3 rounded-2xl font-mono">
+            P(Negatif) = {{ "%.5f"|format(priors.negatif) }}
+        </div>
+    </div>
+</div>
+
+<!-- LIKELIHOOD PER KATA -->
+<div class="bg-white rounded-3xl shadow-lg p-6 mb-6 overflow-auto">
+    <h2 class="text-xl font-bold mb-4">2. Fitur TF-IDF & Likelihood P(fitur|H)</h2>
+    <table class="min-w-full text-sm">
+        <thead>
+            <tr class="bg-gray-100">
+                <th class="px-4 py-3 border">Fitur (kata/bigram)</th>
+                <th class="px-4 py-3 border">Bobot TF-IDF</th>
+                <th class="px-4 py-3 border">P(fitur|Positif)</th>
+                <th class="px-4 py-3 border">P(fitur|Negatif)</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in detail_rows %}
+            <tr>
+                <td class="px-4 py-3 border font-semibold">{{ row.word }}</td>
+                <td class="px-4 py-3 border font-mono">{{ "%.4f"|format(row.weight) }}</td>
+                <td class="px-4 py-3 border font-mono">{{ "%.6f"|format(row.lh_pos) }}</td>
+                <td class="px-4 py-3 border font-mono">{{ "%.6f"|format(row.lh_neg) }}</td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="4" class="px-4 py-6 text-center text-gray-400">
+                    Tidak ada fitur dikenal model setelah preprocessing.
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- POSTERIOR -->
+<div class="bg-white rounded-3xl shadow-lg p-6">
+    <h2 class="text-xl font-bold mb-4">3. Posterior P(H|X)</h2>
+
+    {% if posteriors %}
+    <div class="flex flex-wrap gap-4 mb-6">
+        <div class="bg-emerald-50 text-emerald-700 px-5 py-3 rounded-2xl">
+            <div class="font-mono text-xs">skor log Positif = {{ "%.4f"|format(posteriors.positif.raw) }}</div>
+            <div class="font-bold text-lg">{{ "%.2f"|format(posteriors.positif.persen) }}%</div>
+        </div>
+        <div class="bg-rose-50 text-rose-700 px-5 py-3 rounded-2xl">
+            <div class="font-mono text-xs">skor log Negatif = {{ "%.4f"|format(posteriors.negatif.raw) }}</div>
+            <div class="font-bold text-lg">{{ "%.2f"|format(posteriors.negatif.persen) }}%</div>
+        </div>
+    </div>
+
+    <div class="px-6 py-4 rounded-2xl text-white font-bold text-xl text-center
+        {% if predicted == 'Positif' %}bg-emerald-500{% else %}bg-rose-500{% endif %}">
+        Prediksi: {{ predicted }}
+    </div>
+    {% endif %}
+
+</div>
+
+{% else %}
+
+<div class="bg-white rounded-3xl shadow-lg p-10 text-center text-gray-400">
+    Masukkan ulasan di atas lalu klik <b>Hitung</b> untuk melihat
+    perhitungan Prior, Likelihood, dan Posterior.
+</div>
+
+{% endif %}
+
+{% endblock %}

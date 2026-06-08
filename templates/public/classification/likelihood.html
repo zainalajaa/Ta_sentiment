@@ -1,0 +1,90 @@
+{% extends 'layouts/public_base.html' %}
+
+{% block title %}Likelihood P(fitur|H){% endblock %}
+
+{% block content %}
+
+<section class="hero-bg min-h-screen pt-28 pb-20">
+
+    <div class="max-w-5xl mx-auto px-6">
+
+        <div class="text-center mb-10">
+            <span class="px-4 py-2 rounded-full bg-emerald-500/20 text-emerald-400 text-sm">
+                Perhitungan Manual
+            </span>
+            <h1 class="mt-6 text-4xl md:text-5xl font-bold">Likelihood &mdash; P(fitur|H)</h1>
+            <p class="mt-4 text-slate-400 max-w-2xl mx-auto">
+                Probabilitas tiap fitur (kata/bigram) pada masing-masing kelas dari
+                model Naïve Bayes.
+                <br>
+                <span class="font-mono text-sm text-emerald-400">
+                    P(fitur|Kelas) = exp(feature_log_prob_)
+                </span>
+            </p>
+        </div>
+
+        {% include 'components/public/calc_nav.html' %}
+
+        {% if not_ready %}
+            {% include 'public/classification/_not_ready.html' %}
+        {% else %}
+
+        <div class="glass rounded-3xl p-6 mb-8">
+            <form method="get" class="flex flex-col sm:flex-row gap-3">
+                <input
+                    type="text"
+                    name="text"
+                    value="{{ text }}"
+                    placeholder="Ketik ulasan untuk melihat likelihood fitur-fiturnya..."
+                    class="flex-1 px-4 py-3 rounded-xl bg-slate-900 border border-slate-700 focus:border-emerald-500 outline-none">
+                <button type="submit"
+                    class="px-6 py-3 rounded-xl bg-emerald-500 hover:bg-emerald-600 font-semibold transition">
+                    Lihat
+                </button>
+            </form>
+            <p class="text-xs text-slate-500 mt-3">
+                Jumlah fitur TF-IDF pada model: <span class="font-bold">{{ n_features }}</span>.
+                {% if not text %}Menampilkan 20 fitur dengan likelihood Positif tertinggi.{% endif %}
+            </p>
+        </div>
+
+        <div class="glass rounded-3xl p-6">
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="border-b border-slate-700 text-slate-300">
+                            <th class="text-left p-3">Fitur</th>
+                            {% if text %}<th class="text-left p-3">Bobot TF-IDF</th>{% endif %}
+                            <th class="text-left p-3 text-green-400">P(fitur|Positif)</th>
+                            <th class="text-left p-3 text-red-400">P(fitur|Negatif)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for r in rows %}
+                        <tr class="border-b border-slate-800 hover:bg-slate-800/40">
+                            <td class="p-3 font-medium">{{ r.word }}</td>
+                            {% if text %}
+                            <td class="p-3 font-mono text-slate-300">{{ "%.4f"|format(r.weight) }}</td>
+                            {% endif %}
+                            <td class="p-3 font-mono text-green-400">{{ "%.6f"|format(r.lh_pos) }}</td>
+                            <td class="p-3 font-mono text-red-400">{{ "%.6f"|format(r.lh_neg) }}</td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="4" class="p-6 text-center text-slate-400">
+                                Tidak ada fitur yang cocok dengan ulasan.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        {% endif %}
+
+    </div>
+
+</section>
+
+{% endblock %}

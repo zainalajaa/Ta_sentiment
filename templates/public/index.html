@@ -68,28 +68,28 @@ Beranda
                         <div class="bg-slate-900 rounded-xl p-5">
                             <p class="text-slate-400">Total Ulasan</p>
                             <h2 class="text-3xl font-bold mt-2">
-                                1000+
+                                {{ stats.total_dataset }}
                             </h2>
                         </div>
 
                         <div class="bg-slate-900 rounded-xl p-5">
                             <p class="text-slate-400">Positif</p>
                             <h2 class="text-3xl font-bold text-green-400 mt-2">
-                                427
+                                {{ stats.total_positif }}
                             </h2>
                         </div>
 
                         <div class="bg-slate-900 rounded-xl p-5">
                             <p class="text-slate-400">Negatif</p>
                             <h2 class="text-3xl font-bold text-red-400 mt-2">
-                                460
+                                {{ stats.total_negatif }}
                             </h2>
                         </div>
 
                         <div class="bg-slate-900 rounded-xl p-5">
                             <p class="text-slate-400">Netral</p>
                             <h2 class="text-3xl font-bold text-yellow-400 mt-2">
-                                113
+                                {{ stats.total_netral }}
                             </h2>
                         </div>
 
@@ -161,28 +161,28 @@ Beranda
 
             <div class="glass rounded-2xl p-6 text-center">
                 <h2 class="text-4xl font-bold text-emerald-400">
-                    76.77%
+                    {{ stats.accuracy }}%
                 </h2>
                 <p class="mt-2">Accuracy</p>
             </div>
 
             <div class="glass rounded-2xl p-6 text-center">
                 <h2 class="text-4xl font-bold text-cyan-400">
-                    69.67%
+                    {{ stats.precision }}%
                 </h2>
                 <p class="mt-2">Precision</p>
             </div>
 
             <div class="glass rounded-2xl p-6 text-center">
                 <h2 class="text-4xl font-bold text-yellow-400">
-                    76.77%
+                    {{ stats.recall }}%
                 </h2>
                 <p class="mt-2">Recall</p>
             </div>
 
             <div class="glass rounded-2xl p-6 text-center">
                 <h2 class="text-4xl font-bold text-purple-400">
-                    72.23%
+                    {{ stats.f1_score }}%
                 </h2>
                 <p class="mt-2">F1-Score</p>
             </div>

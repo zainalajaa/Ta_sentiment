@@ -767,6 +767,7 @@
 
             <select
                 name="role"
+                {% if user[3] == 'admin' %}disabled{% endif %}
 
                 class="
                     w-full px-5 py-4
@@ -777,6 +778,10 @@
                     focus:ring-yellow-500
 
                     transition-all duration-300
+
+                    {% if user[3] == 'admin' %}
+                    bg-gray-100 cursor-not-allowed text-gray-500
+                    {% endif %}
                 "
             >
 
@@ -799,6 +804,12 @@
                 </option>
 
             </select>
+
+            {% if user[3] == 'admin' %}
+            <p class="text-sm text-gray-400 -mt-2">
+                Role admin tidak dapat diubah.
+            </p>
+            {% endif %}
 
             <button
                 type="submit"

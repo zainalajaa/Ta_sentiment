@@ -19,11 +19,22 @@ Profil Saya
 
                 <div class="-mt-16 flex flex-col items-center">
 
-                    <div class="w-32 h-32 rounded-full bg-slate-900 border-4 border-white/10 flex items-center justify-center">
+                    <div class="w-32 h-32 rounded-full bg-slate-900 border-4 border-white/10 flex items-center justify-center overflow-hidden">
+
+                        {% if session.get('photo') %}
+
+                        <img
+                            src="{{ url_for('static', filename='uploads/users/' ~ session.get('photo')) }}"
+                            alt="Foto Profil"
+                            class="w-full h-full object-cover">
+
+                        {% else %}
 
                         <span class="text-5xl font-bold text-emerald-400">
                             {{ session.get('username', 'U')[0]|upper }}
                         </span>
+
+                        {% endif %}
 
                     </div>
 
@@ -149,8 +160,27 @@ Profil Saya
         </div>
 
         <form action="{{ url_for('update_public_profile') }}"
-         method="POST">
+         method="POST"
+         enctype="multipart/form-data">
             <div class="p-6 space-y-4">
+
+                <div>
+
+                    <label class="block mb-2 text-sm text-slate-300">
+                        Foto Profil
+                    </label>
+
+                    <input
+                        type="file"
+                        name="photo"
+                        accept="image/*"
+                        class="w-full px-4 py-3 rounded-xl bg-slate-900 border border-slate-700 text-sm focus:border-emerald-500 outline-none">
+
+                    <p class="text-xs text-slate-500 mt-1">
+                        Kosongkan jika tidak ingin mengganti foto.
+                    </p>
+
+                </div>
 
                 <div>
 

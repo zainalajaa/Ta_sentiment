@@ -1,0 +1,92 @@
+{% extends 'layouts/admin.html' %}
+
+{% block content %}
+
+<div class="mb-6">
+
+    <div class="bg-white rounded-3xl shadow-lg p-6">
+
+        <h1 class="text-3xl font-bold text-gray-800 mb-2">
+            Likelihood &mdash; P(fitur|H)
+        </h1>
+
+        <p class="text-gray-500">
+            Probabilitas tiap fitur (kata/bigram TF-IDF) pada masing-masing kelas,
+            diambil dari model <b>MultinomialNB</b> yang dilatih di atas fitur TF-IDF.
+            <br>
+            <span class="font-mono text-sm">
+                P(fitur|Kelas) = exp(feature_log_prob_)
+            </span>
+        </p>
+
+        <div class="mt-5 flex flex-wrap gap-4">
+            <div class="bg-blue-50 text-blue-700 px-5 py-3 rounded-2xl">
+                Jumlah Fitur (TF-IDF):
+                <span class="font-bold">{{ n_features }}</span>
+            </div>
+        </div>
+
+        <form method="get" class="mt-5 flex gap-3">
+            <input
+                type="text"
+                name="text"
+                value="{{ text }}"
+                placeholder="Ketik ulasan untuk melihat likelihood tiap fitur..."
+                class="flex-1 px-4 py-3 rounded-2xl border border-gray-300
+                       focus:outline-none focus:ring-2 focus:ring-emerald-400"
+            >
+            <button type="submit"
+                class="px-6 py-3 rounded-2xl bg-emerald-500 hover:bg-emerald-600
+                       text-white font-semibold">
+                Hitung
+            </button>
+        </form>
+
+        {% if not text %}
+        <p class="mt-3 text-xs text-gray-400">
+            *Menampilkan 20 fitur dengan P(fitur|Positif) tertinggi.
+            Masukkan ulasan untuk melihat fitur yang muncul pada ulasan tersebut
+            beserta bobot TF-IDF nya.
+        </p>
+        {% endif %}
+
+    </div>
+
+</div>
+
+<div class="bg-white rounded-3xl shadow-lg p-6 overflow-auto">
+
+    <table class="min-w-full text-sm">
+        <thead>
+            <tr class="bg-gray-100">
+                <th class="px-4 py-3 border">Fitur (kata/bigram)</th>
+                {% if text %}
+                <th class="px-4 py-3 border">Bobot TF-IDF</th>
+                {% endif %}
+                <th class="px-4 py-3 border">P(fitur|Positif)</th>
+                <th class="px-4 py-3 border">P(fitur|Negatif)</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in rows %}
+            <tr>
+                <td class="px-4 py-3 border font-semibold">{{ row.word }}</td>
+                {% if text %}
+                <td class="px-4 py-3 border font-mono">{{ "%.4f"|format(row.weight) }}</td>
+                {% endif %}
+                <td class="px-4 py-3 border font-mono">{{ "%.6f"|format(row.lh_pos) }}</td>
+                <td class="px-4 py-3 border font-mono">{{ "%.6f"|format(row.lh_neg) }}</td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="4" class="px-4 py-6 text-center text-gray-400">
+                    Tidak ada fitur untuk ditampilkan (kata tidak dikenal model).
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+</div>
+
+{% endblock %}

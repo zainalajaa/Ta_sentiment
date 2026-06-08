@@ -1,0 +1,24 @@
+<!-- STATUS DATASET BELUM SIAP -->
+<div class="glass rounded-3xl p-10 text-center border border-amber-500/40">
+
+    <div class="w-16 h-16 mx-auto rounded-full bg-amber-500/20 text-amber-400
+                flex items-center justify-center text-3xl mb-5">
+        ⚠️
+    </div>
+
+    <h3 class="text-2xl font-bold text-amber-400">
+        Perhitungan Belum Tersedia
+    </h3>
+
+    <p class="mt-3 text-slate-300 max-w-xl mx-auto">
+        Dataset belum siap untuk diolah. Perhitungan manual dapat ditampilkan
+        setelah admin mengimpor dataset, menjalankan preprocessing, dan dataset
+        memuat kelas Positif &amp; Negatif. Silakan coba lagi nanti.
+    </p>
+
+    <a href="{{ url_for('sentiment') }}"
+       class="inline-block mt-6 px-6 py-3 rounded-xl bg-emerald-500 hover:bg-emerald-600 transition">
+        Kembali ke Analisis
+    </a>
+
+</div>

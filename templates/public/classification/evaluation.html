@@ -1,0 +1,92 @@
+{% extends 'layouts/public_base.html' %}
+
+{% block title %}Evaluasi Model{% endblock %}
+
+{% block content %}
+
+<section class="hero-bg min-h-screen pt-28 pb-20">
+
+    <div class="max-w-5xl mx-auto px-6">
+
+        <div class="text-center mb-10">
+            <span class="px-4 py-2 rounded-full bg-emerald-500/20 text-emerald-400 text-sm">
+                Perhitungan Manual
+            </span>
+            <h1 class="mt-6 text-4xl md:text-5xl font-bold">Evaluasi Model</h1>
+            <p class="mt-4 text-slate-400 max-w-2xl mx-auto">
+                Performa model Naïve Bayes pada data uji (test split).
+            </p>
+        </div>
+
+        {% include 'components/public/calc_nav.html' %}
+
+        {% if not_ready %}
+            {% include 'public/classification/_not_ready.html' %}
+        {% else %}
+
+        <!-- METRICS -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-6 mb-10">
+            <div class="glass rounded-2xl p-6 text-center">
+                <h2 class="text-4xl font-bold text-emerald-400">{{ accuracy }}%</h2>
+                <p class="mt-2 text-slate-400">Accuracy</p>
+            </div>
+            <div class="glass rounded-2xl p-6 text-center">
+                <h2 class="text-4xl font-bold text-cyan-400">{{ precision }}%</h2>
+                <p class="mt-2 text-slate-400">Precision</p>
+            </div>
+            <div class="glass rounded-2xl p-6 text-center">
+                <h2 class="text-4xl font-bold text-yellow-400">{{ recall }}%</h2>
+                <p class="mt-2 text-slate-400">Recall</p>
+            </div>
+            <div class="glass rounded-2xl p-6 text-center">
+                <h2 class="text-4xl font-bold text-purple-400">{{ f1_score }}%</h2>
+                <p class="mt-2 text-slate-400">F1-Score</p>
+            </div>
+        </div>
+
+        <!-- CONFUSION MATRIX -->
+        <div class="glass rounded-3xl p-8">
+            <h3 class="text-xl font-bold mb-6 text-center">Confusion Matrix</h3>
+
+            <div class="overflow-x-auto">
+                <table class="mx-auto text-center text-sm">
+                    <thead>
+                        <tr>
+                            <th class="p-3"></th>
+                            <th class="p-3" colspan="2">
+                                <span class="text-slate-400">Prediksi</span>
+                            </th>
+                        </tr>
+                        <tr class="text-slate-300">
+                            <th class="p-3"></th>
+                            <th class="p-3 text-green-400">Positif</th>
+                            <th class="p-3 text-red-400">Negatif</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="p-3 font-semibold text-green-400">Aktual Positif</td>
+                            <td class="p-5 bg-green-500/20 rounded-xl text-2xl font-bold">{{ cm[0][0] }}</td>
+                            <td class="p-5 bg-slate-800/60 rounded-xl text-2xl font-bold">{{ cm[0][1] }}</td>
+                        </tr>
+                        <tr>
+                            <td class="p-3 font-semibold text-red-400">Aktual Negatif</td>
+                            <td class="p-5 bg-slate-800/60 rounded-xl text-2xl font-bold">{{ cm[1][0] }}</td>
+                            <td class="p-5 bg-red-500/20 rounded-xl text-2xl font-bold">{{ cm[1][1] }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <p class="text-center text-slate-500 text-sm mt-6">
+                Diagonal (kiri-atas &amp; kanan-bawah) menunjukkan prediksi yang tepat.
+            </p>
+        </div>
+
+        {% endif %}
+
+    </div>
+
+</section>
+
+{% endblock %}

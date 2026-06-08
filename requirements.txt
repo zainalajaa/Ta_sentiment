@@ -6,3 +6,4 @@ nltk
 Sastrawi
 joblib
 matplotlib
+python-dotenv

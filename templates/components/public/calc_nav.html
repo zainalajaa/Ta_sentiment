@@ -1,0 +1,27 @@
+<!-- NAVIGASI TAHAP PERHITUNGAN MANUAL -->
+<div class="flex flex-wrap gap-2 mb-8">
+
+    {% set steps = [
+        ('public_tfidf', 'TF-IDF'),
+        ('public_prior', 'Prior'),
+        ('public_likelihood', 'Likelihood'),
+        ('sentiment', 'Posterior'),
+        ('public_prediction', 'Prediksi'),
+        ('public_evaluation', 'Evaluasi')
+    ] %}
+
+    {% for endpoint, label in steps %}
+
+    <a href="{{ url_for(endpoint) }}"
+       class="px-4 py-2 rounded-xl text-sm font-medium transition
+              {% if request.endpoint == endpoint %}
+              bg-emerald-500 text-white
+              {% else %}
+              glass text-slate-300 hover:text-emerald-400
+              {% endif %}">
+        {{ label }}
+    </a>
+
+    {% endfor %}
+
+</div>
