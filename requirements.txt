@@ -7,3 +7,4 @@ Sastrawi
 joblib
 matplotlib
 python-dotenv
+mysql-connector-python
