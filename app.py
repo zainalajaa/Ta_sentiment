@@ -2153,43 +2153,33 @@ def import_data():
     # NORMALISASI KOLOM
     df.columns = df.columns.str.strip().str.lower()
 
+    required_columns = ['content', 'label']
+
+    for col in required_columns:
+        if col not in df.columns:
+            flash(f'Kolom {col} tidak ditemukan pada file Excel')
+            return redirect('/preprocessing')
+
     conn = get_connection()
     cursor = conn.cursor()
 
-    for index, row in df.iterrows():
+    for _, row in df.iterrows():
 
-        content = row['content']
-        score = row['score']
+        content = str(row['content']).strip()
+        label = str(row['label']).strip().lower()
 
-        # Skip data kosong
-        if pd.isna(content) or pd.isna(score):
+        if not content:
             continue
-
-        content = str(content).strip()
-
-        if content == "":
-            continue
-
-        # KONVERSI SCORE → SENTIMEN
-        if score >= 4:
-            label = 'positif'
-
-        elif score == 3:
-            label = 'netral'
-
-        else:
-            label = 'negatif'
 
         cursor.execute(
             """
             INSERT INTO preprocessing(content, label)
-            VALUES(%s, %s)
+            VALUES (%s, %s)
             """,
             (content, label)
         )
 
     conn.commit()
-
     cursor.close()
     conn.close()
 
