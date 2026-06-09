@@ -422,6 +422,55 @@
 
     </div>
 
+    <!-- BOBOT TF-IDF PER KELAS -->
+    <div class="mt-8 border-t border-gray-100 pt-8">
+        
+        <h3 class="text-xl font-bold text-gray-800 mb-6">
+            Total Bobot TF-IDF Per Kelas
+        </h3>
+
+        <div class="grid md:grid-cols-2 gap-6">
+
+            <div class="bg-green-50 border border-green-200 rounded-2xl p-6">
+                
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm text-green-600 font-medium">Total Bobot Positif</p>
+                        <h4 class="text-3xl font-bold text-green-700 mt-2">{{ total_weight_pos }}</h4>
+                    </div>
+                    <div class="w-12 h-12 rounded-xl bg-green-200/50 flex items-center justify-center text-green-600">
+                        <i class="fa-solid fa-plus-circle text-xl"></i>
+                    </div>
+                </div>
+                
+                <p class="text-xs text-green-600/70 mt-4 leading-relaxed">
+                    Total akumulasi nilai TF-IDF dari seluruh fitur (kata) yang muncul pada dokumen berlabel <strong>Positif</strong> dalam data training.
+                </p>
+
+            </div>
+
+            <div class="bg-red-50 border border-red-200 rounded-2xl p-6">
+                
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm text-red-600 font-medium">Total Bobot Negatif</p>
+                        <h4 class="text-3xl font-bold text-red-700 mt-2">{{ total_weight_neg }}</h4>
+                    </div>
+                    <div class="w-12 h-12 rounded-xl bg-red-200/50 flex items-center justify-center text-red-600">
+                        <i class="fa-solid fa-minus-circle text-xl"></i>
+                    </div>
+                </div>
+
+                <p class="text-xs text-red-600/70 mt-4 leading-relaxed">
+                    Total akumulasi nilai TF-IDF dari seluruh fitur (kata) yang muncul pada dokumen berlabel <strong>Negatif</strong> dalam data training.
+                </p>
+
+            </div>
+
+        </div>
+
+    </div>
+
     {% if total_netral > 0 %}
 
     <div class="mt-8 bg-amber-50 border border-amber-200 rounded-2xl p-5">

@@ -839,7 +839,6 @@ def get_landing_stats():
 
 
 @app.route("/", methods=["GET", "POST"])
-@login_required
 def index():
 
     result = None
@@ -940,7 +939,7 @@ def index():
                         %s
                     )
                 """, (
-                    session["user_id"],
+                    session.get("user_id"),
                     text,
                     hasil_db
                 ))
@@ -1908,6 +1907,18 @@ def dashboard():
             2
         )
 
+        # ======================
+        # TOTAL BOBOT TF-IDF PER KELAS
+        # ======================
+        
+        # Ambil indeks untuk masing-masing kelas
+        pos_idx = np.where(y_train == 'positif')[0]
+        neg_idx = np.where(y_train == 'negatif')[0]
+        
+        # Hitung total bobot (jumlah nilai TF-IDF dalam matriks sparse)
+        total_weight_pos = round(float(np.sum(X_train_tfidf[pos_idx])), 2)
+        total_weight_neg = round(float(np.sum(X_train_tfidf[neg_idx])), 2)
+
     except Exception:
 
         train_count = 0
@@ -1919,6 +1930,9 @@ def dashboard():
         f1_score_value = 0
 
         split_ratio = '-'
+        
+        total_weight_pos = 0
+        total_weight_neg = 0
 
     return render_template(
         'admin/main/dashboard.html',
@@ -1938,7 +1952,10 @@ def dashboard():
         accuracy=accuracy,
         precision=precision,
         recall=recall,
-        f1_score=f1_score_value
+        f1_score=f1_score_value,
+        
+        total_weight_pos=total_weight_pos,
+        total_weight_neg=total_weight_neg
     )
 
 
@@ -3368,6 +3385,7 @@ def likelihood_view():
     )
 
     text = request.args.get('text', '').strip()
+    category = request.args.get('category', 'all').lower()
 
     rows = []
 
@@ -3378,8 +3396,8 @@ def likelihood_view():
         vec = vectorizer.transform([joined])
 
         for idx, weight in zip(vec.indices, vec.data):
-
-            rows.append({
+            
+            row = {
                 'word': feature_names[idx],
                 'weight': float(weight),
                 'lh_pos': float(lh_pos_all[idx]),
@@ -3389,7 +3407,11 @@ def likelihood_view():
                     if lh_pos_all[idx] >= lh_neg_all[idx]
                     else 'Negatif'
                 )
-            })
+            }
+            
+            # Terapkan filter kategori
+            if category == 'all' or row['dominan'].lower() == category:
+                rows.append(row)
 
         rows.sort(
             key=lambda r: r['weight'],
@@ -3399,8 +3421,8 @@ def likelihood_view():
     else:
 
         for idx in range(len(feature_names)):
-
-            rows.append({
+            
+            row = {
                 'word': feature_names[idx],
                 'weight': None,
                 'lh_pos': float(lh_pos_all[idx]),
@@ -3410,17 +3432,26 @@ def likelihood_view():
                     if lh_pos_all[idx] >= lh_neg_all[idx]
                     else 'Negatif'
                 )
-            })
+            }
+            
+            # Terapkan filter kategori
+            if category == 'all' or row['dominan'].lower() == category:
+                rows.append(row)
 
-        rows.sort(
-            key=lambda r: r['lh_pos'],
-            reverse=True
-        )
+        # Jika filter positif, urutkan berdasarkan lh_pos
+        if category == 'positif':
+            rows.sort(key=lambda r: r['lh_pos'], reverse=True)
+        # Jika filter negatif, urutkan berdasarkan lh_neg
+        elif category == 'negatif':
+            rows.sort(key=lambda r: r['lh_neg'], reverse=True)
+        else:
+            rows.sort(key=lambda r: r['lh_pos'], reverse=True)
 
     return render_template(
         'admin/classification/likelihood.html',
         rows=rows,
         text=text,
+        category=category,
         n_features=len(feature_names),
     )
 
@@ -3747,6 +3778,7 @@ def public_likelihood():
     lh_neg_all = np.exp(model.feature_log_prob_[ci['negatif']])
 
     text = request.args.get('text', '').strip()
+    category = request.args.get('category', 'all').lower()
 
     rows = []
 
@@ -3754,28 +3786,53 @@ def public_likelihood():
         joined = " ".join(preprocess_text(text))
         vec = vectorizer.transform([joined])
         for idx, weight in zip(vec.indices, vec.data):
-            rows.append({
+            row = {
                 'word': feature_names[idx],
                 'weight': float(weight),
                 'lh_pos': float(lh_pos_all[idx]),
                 'lh_neg': float(lh_neg_all[idx]),
-            })
+                'dominan': (
+                    'Positif'
+                    if lh_pos_all[idx] >= lh_neg_all[idx]
+                    else 'Negatif'
+                )
+            }
+            if category == 'all' or row['dominan'].lower() == category:
+                rows.append(row)
+
         rows.sort(key=lambda r: r['weight'], reverse=True)
     else:
-        top_idx = np.argsort(lh_pos_all)[::-1][:20]
-        for idx in top_idx:
-            rows.append({
+        for idx in range(len(feature_names)):
+            row = {
                 'word': feature_names[idx],
                 'weight': None,
                 'lh_pos': float(lh_pos_all[idx]),
                 'lh_neg': float(lh_neg_all[idx]),
-            })
+                'dominan': (
+                    'Positif'
+                    if lh_pos_all[idx] >= lh_neg_all[idx]
+                    else 'Negatif'
+                )
+            }
+            if category == 'all' or row['dominan'].lower() == category:
+                rows.append(row)
+
+        if category == 'positif':
+            rows.sort(key=lambda r: r['lh_pos'], reverse=True)
+        elif category == 'negatif':
+            rows.sort(key=lambda r: r['lh_neg'], reverse=True)
+        else:
+            rows.sort(key=lambda r: r['lh_pos'], reverse=True)
+        
+        # Batasi 100 fitur saja untuk publik jika tidak mencari kata spesifik
+        rows = rows[:100]
 
     return render_template(
         'public/classification/likelihood.html',
         not_ready=False,
         rows=rows,
         text=text,
+        category=category,
         n_features=len(feature_names),
     )
 

@@ -37,33 +37,49 @@
 
         </div>
 
-        <form method="get" class="mt-5 flex gap-3">
+        <form method="get" class="mt-5 flex flex-wrap gap-3">
 
             <input
                 type="text"
                 name="text"
                 value="{{ text }}"
                 placeholder="Masukkan ulasan untuk melihat likelihood fitur yang muncul..."
-                class="flex-1 px-4 py-3 rounded-2xl border border-gray-300
+                class="flex-1 min-w-[300px] px-4 py-3 rounded-2xl border border-gray-300
                        focus:outline-none focus:ring-2 focus:ring-emerald-400"
             >
 
+            <select 
+                name="category" 
+                class="px-4 py-3 rounded-2xl border border-gray-300 bg-white
+                       focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                onchange="this.form.submit()"
+            >
+                <option value="all" {% if category == 'all' %}selected{% endif %}>Semua Kategori</option>
+                <option value="positif" {% if category == 'positif' %}selected{% endif %}>Dominan Positif</option>
+                <option value="negatif" {% if category == 'negatif' %}selected{% endif %}>Dominan Negatif</option>
+            </select>
+
             <button
                 type="submit"
-                class="px-6 py-3 rounded-2xl
+                class="px-8 py-3 rounded-2xl
                        bg-emerald-500 hover:bg-emerald-600
                        text-white font-semibold"
             >
-                Hitung
+                Terapkan
             </button>
 
         </form>
 
         {% if not text %}
         <p class="mt-4 text-sm text-gray-500">
-            Menampilkan seluruh fitur TF-IDF yang digunakan model.
-            Data diurutkan berdasarkan nilai
-            <b>P(Fitur|Positif)</b> tertinggi.
+            Menampilkan fitur TF-IDF berdasarkan kategori: 
+            <span class="font-bold text-gray-700">
+                {% if category == 'positif' %}Dominan Positif
+                {% elif category == 'negatif' %}Dominan Negatif
+                {% else %}Semua Fitur
+                {% endif %}
+            </span>.
+            Data diurutkan berdasarkan nilai probabilitas tertinggi.
         </p>
         {% endif %}
 
