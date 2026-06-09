@@ -7,46 +7,63 @@
     <div class="bg-white rounded-3xl shadow-lg p-6">
 
         <h1 class="text-3xl font-bold text-gray-800 mb-2">
-            Likelihood &mdash; P(fitur|H)
+            Likelihood — P(Fitur|Kelas)
         </h1>
 
         <p class="text-gray-500">
-            Probabilitas tiap fitur (kata/bigram TF-IDF) pada masing-masing kelas,
-            diambil dari model <b>MultinomialNB</b> yang dilatih di atas fitur TF-IDF.
+            Probabilitas setiap fitur TF-IDF pada masing-masing kelas
+            berdasarkan model Multinomial Naïve Bayes.
             <br>
             <span class="font-mono text-sm">
-                P(fitur|Kelas) = exp(feature_log_prob_)
+                P(Fitur|Kelas) = exp(feature_log_prob_)
             </span>
         </p>
 
         <div class="mt-5 flex flex-wrap gap-4">
+
             <div class="bg-blue-50 text-blue-700 px-5 py-3 rounded-2xl">
-                Jumlah Fitur (TF-IDF):
-                <span class="font-bold">{{ n_features }}</span>
+                Jumlah Fitur TF-IDF :
+                <span class="font-bold">
+                    {{ n_features }}
+                </span>
             </div>
+
+            <div class="bg-emerald-50 text-emerald-700 px-5 py-3 rounded-2xl">
+                Total Data Ditampilkan :
+                <span class="font-bold">
+                    {{ rows|length }}
+                </span>
+            </div>
+
         </div>
 
         <form method="get" class="mt-5 flex gap-3">
+
             <input
                 type="text"
                 name="text"
                 value="{{ text }}"
-                placeholder="Ketik ulasan untuk melihat likelihood tiap fitur..."
+                placeholder="Masukkan ulasan untuk melihat likelihood fitur yang muncul..."
                 class="flex-1 px-4 py-3 rounded-2xl border border-gray-300
                        focus:outline-none focus:ring-2 focus:ring-emerald-400"
             >
-            <button type="submit"
-                class="px-6 py-3 rounded-2xl bg-emerald-500 hover:bg-emerald-600
-                       text-white font-semibold">
+
+            <button
+                type="submit"
+                class="px-6 py-3 rounded-2xl
+                       bg-emerald-500 hover:bg-emerald-600
+                       text-white font-semibold"
+            >
                 Hitung
             </button>
+
         </form>
 
         {% if not text %}
-        <p class="mt-3 text-xs text-gray-400">
-            *Menampilkan 20 fitur dengan P(fitur|Positif) tertinggi.
-            Masukkan ulasan untuk melihat fitur yang muncul pada ulasan tersebut
-            beserta bobot TF-IDF nya.
+        <p class="mt-4 text-sm text-gray-500">
+            Menampilkan seluruh fitur TF-IDF yang digunakan model.
+            Data diurutkan berdasarkan nilai
+            <b>P(Fitur|Positif)</b> tertinggi.
         </p>
         {% endif %}
 
@@ -54,38 +71,112 @@
 
 </div>
 
-<div class="bg-white rounded-3xl shadow-lg p-6 overflow-auto">
+<div class="bg-white rounded-3xl shadow-lg p-6">
 
-    <table class="min-w-full text-sm">
-        <thead>
-            <tr class="bg-gray-100">
-                <th class="px-4 py-3 border">Fitur (kata/bigram)</th>
-                {% if text %}
-                <th class="px-4 py-3 border">Bobot TF-IDF</th>
-                {% endif %}
-                <th class="px-4 py-3 border">P(fitur|Positif)</th>
-                <th class="px-4 py-3 border">P(fitur|Negatif)</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for row in rows %}
-            <tr>
-                <td class="px-4 py-3 border font-semibold">{{ row.word }}</td>
-                {% if text %}
-                <td class="px-4 py-3 border font-mono">{{ "%.4f"|format(row.weight) }}</td>
-                {% endif %}
-                <td class="px-4 py-3 border font-mono">{{ "%.6f"|format(row.lh_pos) }}</td>
-                <td class="px-4 py-3 border font-mono">{{ "%.6f"|format(row.lh_neg) }}</td>
-            </tr>
-            {% else %}
-            <tr>
-                <td colspan="4" class="px-4 py-6 text-center text-gray-400">
-                    Tidak ada fitur untuk ditampilkan (kata tidak dikenal model).
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+    <div class="overflow-auto max-h-[700px] border border-gray-200 rounded-2xl">
+
+        <table class="min-w-full text-sm">
+
+            <thead class="sticky top-0 bg-gray-100 z-10">
+
+                <tr>
+
+                    <th class="px-4 py-3 border w-16">
+                        No
+                    </th>
+
+                    <th class="px-4 py-3 border">
+                        Fitur
+                    </th>
+
+                    {% if text %}
+                    <th class="px-4 py-3 border">
+                        Bobot TF-IDF
+                    </th>
+                    {% endif %}
+
+                    <th class="px-4 py-3 border">
+                        P(Fitur|Positif)
+                    </th>
+
+                    <th class="px-4 py-3 border">
+                        P(Fitur|Negatif)
+                    </th>
+
+                    <th class="px-4 py-3 border">
+                        Kelas Dominan
+                    </th>
+
+                </tr>
+
+            </thead>
+
+            <tbody>
+
+                {% for row in rows %}
+
+                <tr class="hover:bg-gray-50">
+
+                    <td class="px-4 py-3 border text-center">
+                        {{ loop.index }}
+                    </td>
+
+                    <td class="px-4 py-3 border font-semibold">
+                        {{ row.word }}
+                    </td>
+
+                    {% if text %}
+                    <td class="px-4 py-3 border font-mono">
+                        {{ "%.4f"|format(row.weight) }}
+                    </td>
+                    {% endif %}
+
+                    <td class="px-4 py-3 border font-mono">
+                        {{ "%.6f"|format(row.lh_pos) }}
+                    </td>
+
+                    <td class="px-4 py-3 border font-mono">
+                        {{ "%.6f"|format(row.lh_neg) }}
+                    </td>
+
+                    <td class="px-4 py-3 border text-center">
+
+                        {% if row.dominan == 'Positif' %}
+                        <span class="px-3 py-1 rounded-full text-xs font-semibold
+                                     bg-green-100 text-green-700">
+                            Positif
+                        </span>
+                        {% else %}
+                        <span class="px-3 py-1 rounded-full text-xs font-semibold
+                                     bg-red-100 text-red-700">
+                            Negatif
+                        </span>
+                        {% endif %}
+
+                    </td>
+
+                </tr>
+
+                {% else %}
+
+                <tr>
+
+                    <td
+                        colspan="{% if text %}6{% else %}5{% endif %}"
+                        class="px-4 py-6 text-center text-gray-400"
+                    >
+                        Tidak ada fitur yang ditemukan.
+                    </td>
+
+                </tr>
+
+                {% endfor %}
+
+            </tbody>
+
+        </table>
+
+    </div>
 
 </div>
 

@@ -3358,36 +3358,64 @@ def likelihood_view():
     feature_names = bundle['feature_names']
     ci = bundle['class_index']
 
-    # P(fitur|kelas) = exp(feature_log_prob_)
-    lh_pos_all = np.exp(model.feature_log_prob_[ci['positif']])
-    lh_neg_all = np.exp(model.feature_log_prob_[ci['negatif']])
+    # P(fitur|kelas)
+    lh_pos_all = np.exp(
+        model.feature_log_prob_[ci['positif']]
+    )
+
+    lh_neg_all = np.exp(
+        model.feature_log_prob_[ci['negatif']]
+    )
 
     text = request.args.get('text', '').strip()
 
     rows = []
 
     if text:
-        # fitur (kata/bigram) yang muncul pada teks input + bobot TF-IDF nya
+
         joined = " ".join(preprocess_text(text))
+
         vec = vectorizer.transform([joined])
+
         for idx, weight in zip(vec.indices, vec.data):
+
             rows.append({
                 'word': feature_names[idx],
                 'weight': float(weight),
                 'lh_pos': float(lh_pos_all[idx]),
                 'lh_neg': float(lh_neg_all[idx]),
+                'dominan': (
+                    'Positif'
+                    if lh_pos_all[idx] >= lh_neg_all[idx]
+                    else 'Negatif'
+                )
             })
-        rows.sort(key=lambda r: r['weight'], reverse=True)
+
+        rows.sort(
+            key=lambda r: r['weight'],
+            reverse=True
+        )
+
     else:
-        # Default: 20 fitur dengan P(fitur|Positif) tertinggi
-        top_idx = np.argsort(lh_pos_all)[::-1][:20]
-        for idx in top_idx:
+
+        for idx in range(len(feature_names)):
+
             rows.append({
                 'word': feature_names[idx],
                 'weight': None,
                 'lh_pos': float(lh_pos_all[idx]),
                 'lh_neg': float(lh_neg_all[idx]),
+                'dominan': (
+                    'Positif'
+                    if lh_pos_all[idx] >= lh_neg_all[idx]
+                    else 'Negatif'
+                )
             })
+
+        rows.sort(
+            key=lambda r: r['lh_pos'],
+            reverse=True
+        )
 
     return render_template(
         'admin/classification/likelihood.html',
