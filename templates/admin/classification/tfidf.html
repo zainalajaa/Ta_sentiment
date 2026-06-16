@@ -31,67 +31,122 @@
                 </span>
             </div>
 
+            {% if from_db %}
+            <div class="bg-purple-50 text-purple-700 px-5 py-3 rounded-2xl">
+                Status: <span class="font-bold">Database</span>
+            </div>
+            {% else %}
+            <div class="bg-orange-50 text-orange-700 px-5 py-3 rounded-2xl">
+                Status: <span class="font-bold">Real-time (Memory)</span>
+            </div>
+            {% endif %}
+
+            <a href="/classification/tfidf/sync" class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-3 rounded-2xl transition-all shadow-md flex items-center gap-2">
+                <i class="fas fa-sync"></i>
+                Sinkronkan ke Database
+            </a>
+
         </div>
 
     </div>
 
 </div>
 
-<div class="bg-white rounded-3xl shadow-lg p-6 overflow-auto">
+<div class="bg-white rounded-3xl shadow-lg p-6 mb-8">
+    <h2 class="text-2xl font-bold mb-5 flex items-center gap-2">
+        <i class="fas fa-list-ol text-indigo-500"></i>
+        Document Frequency (DF)
+    </h2>
+    <p class="text-gray-500 mb-5">
+        Jumlah dokumen yang mengandung tiap kata/fitur di seluruh data latih.
+    </p>
+    <div class="overflow-auto max-h-64 border rounded-xl">
+        <table class="min-w-full text-sm">
+            <thead class="sticky top-0 bg-gray-100 z-10">
+                <tr class="bg-gray-100">
+                    <th class="px-4 py-3 border text-left">Fitur (Term)</th>
+                    <th class="px-4 py-3 border text-center">DF (Jumlah Dokumen)</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for col in columns %}
+                {% if col not in ['ID', 'Ulasan'] %}
+                <tr class="hover:bg-gray-50">
+                    <td class="px-4 py-3 border font-medium text-gray-700">{{ col }}</td>
+                    <td class="px-4 py-3 border text-center font-mono text-indigo-600">
+                        {{ df_values.get(col, 0) }}
+                    </td>
+                </tr>
+                {% endif %}
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="bg-white rounded-3xl shadow-lg p-6 flex flex-col" style="height: calc(100vh - 300px);">
 
     <h2 class="text-2xl font-bold mb-5">
         Matrix TF-IDF
     </h2>
 
-    <table class="min-w-full text-sm">
+    <div class="overflow-auto border rounded-xl flex-grow">
 
-        <thead>
+        <table class="min-w-full text-sm">
 
-            <tr class="bg-gray-100">
+            <thead class="sticky top-0 bg-gray-100 z-10">
 
-                <th class="px-4 py-3 border">
-                    No
-                </th>
+                <tr class="bg-gray-100">
 
-                {% for col in columns %}
+                    <th class="px-4 py-3 border">
+                        No
+                    </th>
 
-                <th class="px-4 py-3 border whitespace-nowrap">
-                    {{ col }}
-                </th>
+                    {% for col in columns %}
+
+                    <th class="px-4 py-3 border whitespace-nowrap">
+                        {{ col }}
+                    </th>
+
+                    {% endfor %}
+
+                </tr>
+
+            </thead>
+
+            <tbody>
+
+                {% for row in tables %}
+
+                <tr>
+
+                    <td class="px-4 py-3 border text-center font-medium bg-gray-50">
+                        {{ loop.index }}
+                    </td>
+
+                    {% for value in row %}
+
+                    <td class="px-4 py-3 border whitespace-nowrap">
+
+                        {% if value is number %}
+                            {{ "%.3f"|format(value) }}
+                        {% else %}
+                            {{ value }}
+                        {% endif %}
+
+                    </td>
+
+                    {% endfor %}
+
+                </tr>
 
                 {% endfor %}
 
-            </tr>
+            </tbody>
 
-        </thead>
+        </table>
 
-        <tbody>
-
-            {% for row in tables %}
-
-            <tr>
-
-                <td class="px-4 py-3 border">
-                    {{ loop.index }}
-                </td>
-
-                {% for value in row %}
-
-                <td class="px-4 py-3 border whitespace-nowrap">
-
-                    {{ "%.3f"|format(value) }}
-
-                </td>
-
-                {% endfor %}
-
-            </tr>
-
-            {% endfor %}
-
-        </tbody>
-
-    </table>
+    </div>
 
 </div>
 

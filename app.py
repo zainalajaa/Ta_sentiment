@@ -65,7 +65,7 @@ from Sastrawi.Stemmer.StemmerFactory import (
 # LOCAL MODULE
 # =========================================
 
-from ml.database import get_connection, init_password_reset_table
+from ml.database import get_connection, init_password_reset_table, init_tfidf_table
 from ml.mailer import send_reset_email
 
 import secrets
@@ -981,6 +981,9 @@ def index():
         role=session.get("role")
     )
 
+# =====================================================
+# CEK SENTIMEN
+# =====================================================
 
 # =====================================================
 # HALAMAN FREE USER
@@ -1704,7 +1707,6 @@ def simpan_hasil_analisis():
             conn.close()
         except:
             pass
-
 
 
 
@@ -2505,7 +2507,6 @@ def preprocessing():
 
 
 
-
 @app.route('/preprocessing/import', methods=['POST'])
 @admin_required
 def import_data():
@@ -2603,7 +2604,6 @@ def import_data():
     flash('Dataset berhasil diimport')
 
     return redirect('/preprocessing')
-
 
 
 
@@ -2835,7 +2835,9 @@ def delete_all():
 @admin_required
 def split_data():
 
+    # ==========================================
     # DEFAULT SESSION
+    # ==========================================
     if 'test_size' not in session:
         session['test_size'] = 0.2
 
@@ -2845,7 +2847,6 @@ def split_data():
     # ==========================================
     # STATISTIK DATASET AWAL
     # ==========================================
-
     cursor.execute("""
         SELECT label, COUNT(*)
         FROM preprocessing
@@ -2875,15 +2876,54 @@ def split_data():
         netral_count
     )
 
-    total_used = (
+    # ==========================================
+    # DATA KOSONG SETELAH PREPROCESSING
+    # ==========================================
+    cursor.execute("""
+        SELECT COUNT(*)
+        FROM preprocessing
+        WHERE label IN ('positif', 'negatif')
+        AND (stemming IS NULL OR stemming = '')
+    """)
+
+    empty_count = cursor.fetchone()[0]
+
+    # ==========================================
+    # KOMPOSISI DATA YANG DIGUNAKAN MODEL
+    # ==========================================
+    cursor.execute("""
+        SELECT COUNT(*)
+        FROM preprocessing
+        WHERE label = 'positif'
+        AND stemming IS NOT NULL
+        AND stemming != ''
+    """)
+
+    positif_used = cursor.fetchone()[0]
+
+    cursor.execute("""
+        SELECT COUNT(*)
+        FROM preprocessing
+        WHERE label = 'negatif'
+        AND stemming IS NOT NULL
+        AND stemming != ''
+    """)
+
+    negatif_used = cursor.fetchone()[0]
+
+    binary_total = (
         positif_count +
         negatif_count
+    )
+
+    total_used = (
+        positif_used +
+        negatif_used
     )
 
     # ==========================================
     # DATA YANG DIGUNAKAN MODEL
     # ==========================================
-
     cursor.execute("""
         SELECT stemming, label
         FROM preprocessing
@@ -2899,16 +2939,21 @@ def split_data():
 
     if not data:
 
-        flash('Data preprocessing kosong')
+        flash(
+            'Data preprocessing kosong',
+            'warning'
+        )
+
         return redirect('/preprocessing')
 
     texts = [row[0] for row in data]
     labels = [row[1] for row in data]
 
-    # AMBIL DARI SESSION
+    # ==========================================
+    # AMBIL RASIO DARI SESSION
+    # ==========================================
     test_size = session.get('test_size', 0.2)
 
-    # JIKA USER GANTI RATIO
     if request.method == 'POST':
 
         ratio = request.form.get('ratio')
@@ -2922,13 +2967,11 @@ def split_data():
 
         test_size = ratio_map.get(ratio, 0.2)
 
-        # SIMPAN KE SESSION
         session['test_size'] = test_size
 
     # ==========================================
     # VALIDASI DATASET
     # ==========================================
-
     total_data = len(texts)
     jumlah_kelas = len(set(labels))
 
@@ -2956,9 +2999,8 @@ def split_data():
         return redirect('/preprocessing')
 
     # ==========================================
-    # SPLIT DATA
+    # SPLIT DATASET
     # ==========================================
-
     try:
 
         X_train, X_test, y_train, y_test = train_test_split(
@@ -2986,18 +3028,29 @@ def split_data():
 
     return render_template(
         'admin/preprocessing/split_dataset.html',
+
+        # Data split
         train_data=train_data,
         test_data=test_data,
+
+        # Rasio
         training_ratio=training_ratio,
         testing_ratio=testing_ratio,
 
+        # Statistik dataset awal
+        total_dataset=total_dataset,
         positif_count=positif_count,
         negatif_count=negatif_count,
         netral_count=netral_count,
 
-        total_dataset=total_dataset,
-        total_used=total_used
+        # Statistik dataset valid
+        binary_total=binary_total,
+        empty_count=empty_count,
+        total_used=total_used,
+        positif_used=positif_used,
+        negatif_used=negatif_used
     )
+
 # =====================================================
 # HASIL KLASIFIKASI
 # =====================================================
@@ -3051,6 +3104,50 @@ def get_split_data():
     )
 
     return X_train, X_test, y_train, y_test
+
+
+def get_split_data_with_ids():
+    """Versi get_split_data yang mengembalikan ID preprocessing untuk sinkronisasi DB."""
+    test_size = session.get('test_size', 0.2)
+
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT id, stemming, label
+        FROM preprocessing
+        WHERE stemming IS NOT NULL
+        AND stemming != ''
+        AND label IN ('positif', 'negatif')
+    """)
+
+    data = cursor.fetchall()
+    cursor.close()
+    conn.close()
+
+    ids = [row[0] for row in data]
+    texts = [row[1] for row in data]
+    labels = [row[2] for row in data]
+
+    if len(texts) < 2 or len(set(labels)) < 2:
+        raise DataNotReadyError('Data belum siap.')
+
+    (
+        X_train_ids, X_test_ids,
+        X_train, X_test,
+        y_train, y_test
+    ) = train_test_split(
+        ids, texts, labels,
+        test_size=test_size,
+        random_state=42,
+        stratify=labels
+    )
+
+    return (
+        X_train_ids, X_test_ids,
+        X_train, X_test,
+        y_train, y_test
+    )
 
 
 # =========================================
@@ -3151,38 +3248,181 @@ def predict(tokens):
 @app.route('/classification/tfidf')
 @admin_required
 def tfidf():
+    conn = get_connection()
+    cursor = conn.cursor()
+    
+    # Cek apakah ada data di tabel tfidf
+    cursor.execute("SELECT COUNT(*) FROM tfidf")
+    count = cursor.fetchone()[0]
+    
+    if count > 0:
+        # Ambil seluruh term secara alfabetis (tanpa limit)
+        cursor.execute("SELECT DISTINCT term FROM tfidf ORDER BY term")
+        columns = [row[0] for row in cursor.fetchall()]
+        
+        # Ambil seluruh dokumen yang ada di tabel tfidf (urutkan berdasarkan ID)
+        cursor.execute("""
+            SELECT DISTINCT t.preprocessing_id, p.stemming 
+            FROM tfidf t
+            JOIN preprocessing p ON t.preprocessing_id = p.id
+            ORDER BY t.preprocessing_id ASC
+        """)
+        docs = cursor.fetchall()
+        
+        doc_ids = [d[0] for d in docs]
+        
+        if doc_ids:
+            format_ids = ','.join(['%s'] * len(doc_ids))
+            format_terms = ','.join(['%s'] * len(columns))
+            cursor.execute(f"""
+                SELECT preprocessing_id, term, tfidf_value 
+                FROM tfidf 
+                WHERE preprocessing_id IN ({format_ids})
+                AND term IN ({format_terms})
+            """, doc_ids + columns)
+            
+            val_map = {(r[0], r[1]): r[2] for r in cursor.fetchall()}
+        else:
+            val_map = {}
 
+        tables = []
+        for doc_id, text in docs:
+            row_data = [doc_id, text[:30] + '...' if text else '']
+            for term in columns:
+                row_data.append(val_map.get((doc_id, term), 0.0))
+            tables.append(row_data)
+        
+        # Hitung DF (Document Frequency) untuk tiap term dari database
+        cursor.execute("""
+            SELECT term, COUNT(preprocessing_id) 
+            FROM tfidf 
+            GROUP BY term
+        """)
+        df_map = {row[0]: row[1] for row in cursor.fetchall()}
+        
+        cursor.execute("SELECT COUNT(DISTINCT preprocessing_id) FROM tfidf")
+        total_docs = cursor.fetchone()[0]
+        cursor.execute("SELECT COUNT(DISTINCT term) FROM tfidf")
+        total_terms = cursor.fetchone()[0]
+        
+        cursor.close()
+        conn.close()
+        
+        return render_template(
+            'admin/classification/tfidf.html',
+            tables=tables,
+            columns=['ID', 'Ulasan'] + columns,
+            total_documents=total_docs,
+            total_terms=total_terms,
+            from_db=True,
+            df_values=df_map
+        )
+
+    # Fallback jika database kosong
+    cursor.close()
+    conn.close()
+    
     try:
-        X_train, X_test, y_train, y_test = get_split_data()
+        X_train_ids, X_test_ids, X_train, X_test, y_train, y_test = get_split_data_with_ids()
     except DataNotReadyError as e:
         flash(str(e), 'warning')
         return redirect('/preprocessing')
 
     vectorizer = get_vectorizer()
-
-    # TRAINING
     X_train_tfidf = vectorizer.fit_transform(X_train)
-
-    # TESTING
-    X_test_tfidf = vectorizer.transform(X_test)
-
     feature_names = vectorizer.get_feature_names_out()
 
-    # PREVIEW DATAFRAME
-    tfidf_df = pd.DataFrame.sparse.from_spmatrix(
-        X_train_tfidf,
-        columns=feature_names
-    )
-
-    preview = tfidf_df.head(20)
+    # Hitung DF dari matriks X_train_tfidf
+    # DF = jumlah dokumen yang memiliki nilai > 0 untuk term tersebut
+    import numpy as np
+    df_counts = (X_train_tfidf > 0).sum(axis=0).A1
+    df_map = {term: int(count) for term, count in zip(feature_names, df_counts)}
+    
+    # Urutkan berdasarkan ID agar konsisten dengan tampilan DB
+    combined = sorted(zip(X_train_ids, X_train), key=lambda x: x[0])
+    preview_data = combined[:20]
+    
+    preview_ids = [x[0] for x in preview_data]
+    preview_texts = [x[1] for x in preview_data]
+    
+    preview_tfidf = vectorizer.transform(preview_texts).toarray()
+    # Tampilkan seluruh kolom feature
+    preview_cols = feature_names.tolist()
+    
+    tables = []
+    for i in range(len(preview_ids)):
+        row_data = [preview_ids[i], preview_texts[i][:30] + '...' if preview_texts[i] else '']
+        for j in range(len(preview_cols)):
+            row_data.append(float(preview_tfidf[i][j]))
+        tables.append(row_data)
 
     return render_template(
         'admin/classification/tfidf.html',
-        tables=preview.values.tolist(),
-        columns=preview.columns.tolist(),
+        tables=tables,
+        columns=['ID', 'Ulasan'] + preview_cols,
         total_documents=len(X_train),
-        total_terms=len(feature_names)
+        total_terms=len(feature_names),
+        from_db=False,
+        df_values=df_map
     )
+
+
+@app.route('/classification/tfidf/sync')
+@admin_required
+def tfidf_sync():
+    """Menghitung TF-IDF dan menyimpannya ke database (tabel tfidf)."""
+    try:
+        X_train_ids, X_test_ids, X_train, X_test, y_train, y_test = get_split_data_with_ids()
+    except DataNotReadyError as e:
+        flash(str(e), 'warning')
+        return redirect('/preprocessing')
+
+    vectorizer = get_vectorizer()
+    X_train_tfidf = vectorizer.fit_transform(X_train)
+    feature_names = vectorizer.get_feature_names_out()
+
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    try:
+        # Hapus data lama
+        cursor.execute("DELETE FROM tfidf")
+        
+        batch_data = []
+        for i, doc_id in enumerate(X_train_ids):
+            doc_vector = X_train_tfidf[i]
+            for term_idx, weight in zip(doc_vector.indices, doc_vector.data):
+                batch_data.append((
+                    int(doc_id),
+                    str(feature_names[term_idx]),
+                    float(weight)
+                ))
+                
+                # Insert per 5000 baris agar tidak overload
+                if len(batch_data) >= 5000:
+                    cursor.executemany("""
+                        INSERT INTO tfidf (preprocessing_id, term, tfidf_value)
+                        VALUES (%s, %s, %s)
+                    """, batch_data)
+                    batch_data = []
+
+        # Sisa batch
+        if batch_data:
+            cursor.executemany("""
+                INSERT INTO tfidf (preprocessing_id, term, tfidf_value)
+                VALUES (%s, %s, %s)
+            """, batch_data)
+        
+        conn.commit()
+        flash('Data TF-IDF berhasil disinkronkan ke database.', 'success')
+    except Exception as e:
+        conn.rollback()
+        flash(f'Gagal sinkronisasi TF-IDF: {str(e)}', 'error')
+    finally:
+        cursor.close()
+        conn.close()
+
+    return redirect('/classification/tfidf')
 
 
 # =========================================
@@ -3240,10 +3480,6 @@ def model_classes(model):
 
 
 def evaluate_tfidf_model(bundle):
-    """
-    Evaluasi model TF-IDF pada DATA UJI (test split) -> identik dengan
-    angka pada menu Evaluation.
-    """
     model = bundle['model']
     vectorizer = bundle['vectorizer']
     X_test = bundle['X_test']
@@ -3255,11 +3491,42 @@ def evaluate_tfidf_model(bundle):
 
     return {
         'accuracy': round(accuracy_score(y_test, predictions) * 100, 2),
-        'precision': round(precision_score(y_test, predictions, average='weighted', zero_division=0) * 100, 2),
-        'recall': round(recall_score(y_test, predictions, average='weighted', zero_division=0) * 100, 2),
-        'f1': round(f1_score(y_test, predictions, average='weighted', zero_division=0) * 100, 2),
+
+        # fokus pada kelas positif
+        'precision': round(
+            precision_score(
+                y_test,
+                predictions,
+                pos_label='positif',
+                zero_division=0
+            ) * 100, 2
+        ),
+
+        'recall': round(
+            recall_score(
+                y_test,
+                predictions,
+                pos_label='positif',
+                zero_division=0
+            ) * 100, 2
+        ),
+
+        'f1': round(
+            f1_score(
+                y_test,
+                predictions,
+                pos_label='positif',
+                zero_division=0
+            ) * 100, 2
+        ),
+
         'total': len(y_test),
-        'cm': confusion_matrix(y_test, predictions, labels=labels).tolist(),
+        'cm': confusion_matrix(
+            y_test,
+            predictions,
+            labels=labels
+        ).tolist(),
+
         'labels': labels,
     }
 
@@ -3633,7 +3900,7 @@ def evaluation():
         precision_score(
             y_test,
             predictions,
-            average='weighted',
+            pos_label='positif',
             zero_division=0
         ) * 100,
         2
@@ -3643,7 +3910,7 @@ def evaluation():
         recall_score(
             y_test,
             predictions,
-            average='weighted',
+            pos_label='positif',
             zero_division=0
         ) * 100,
         2
@@ -3653,12 +3920,12 @@ def evaluation():
         f1_score(
             y_test,
             predictions,
-            average='weighted',
+            pos_label='positif',
             zero_division=0
         ) * 100,
         2
     )
-
+    
     # Confusion Matrix 2 Kelas
     labels = [
         'positif',
@@ -3704,6 +3971,11 @@ def public_tfidf():
 
     feature_names = vectorizer.get_feature_names_out()
 
+    # Hitung DF (Document Frequency)
+    import numpy as np
+    df_counts = (X_train_tfidf > 0).sum(axis=0).A1
+    df_map = {term: int(count) for term, count in zip(feature_names, df_counts)}
+
     tfidf_df = pd.DataFrame.sparse.from_spmatrix(
         X_train_tfidf,
         columns=feature_names
@@ -3717,7 +3989,8 @@ def public_tfidf():
         tables=preview.values.tolist(),
         columns=preview.columns.tolist(),
         total_documents=len(X_train),
-        total_terms=len(feature_names)
+        total_terms=len(feature_names),
+        df_values=df_map
     )
 
 
