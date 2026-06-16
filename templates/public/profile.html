@@ -6,6 +6,9 @@ Profil Saya
 
 {% block content %}
 
+<!-- TOAST NOTIFICATION -->
+<div id="toast-container" class="fixed top-24 right-5 z-[100] space-y-3 pointer-events-none"></div>
+
 <section class="hero-bg min-h-screen pt-28 pb-16">
 
     <div class="max-w-5xl mx-auto px-6">
@@ -159,7 +162,7 @@ Profil Saya
 
         </div>
 
-        <form action="{{ url_for('update_public_profile') }}"
+        <form id="publicEditProfileForm" action="{{ url_for('update_public_profile') }}"
          method="POST"
          enctype="multipart/form-data">
             <div class="p-6 space-y-4">
@@ -200,11 +203,12 @@ Profil Saya
                 <div>
 
                     <label class="block mb-2 text-sm text-slate-300">
-                        Email
+                        Email (Wajib @gmail.com)
                     </label>
 
                     <input
                         type="email"
+                        id="publicEmail"
                         name="email"
                         value="{{ session.get('email') }}"
                         required
@@ -260,28 +264,43 @@ Profil Saya
 
             <div class="p-6 space-y-4">
 
-                <input
-                    type="password"
-                    name="old_password"
-                    placeholder="Password Lama"
-                    required
-                    class="w-full px-4 py-3 rounded-xl bg-slate-900 border border-slate-700">
+                <div class="relative">
+                    <input
+                        type="password"
+                        name="old_password"
+                        placeholder="Password Lama"
+                        required
+                        class="w-full px-4 py-3 rounded-xl bg-slate-900 border border-slate-700 pr-12">
+                    <button type="button" class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-emerald-400 transition-colors toggle-pass">
+                        <i class="fa-solid fa-eye"></i>
+                    </button>
+                </div>
 
-                <input
-                    type="password"
-                    name="new_password"
-                    placeholder="Password Baru"
-                    required
-                    minlength="6"
-                    class="w-full px-4 py-3 rounded-xl bg-slate-900 border border-slate-700">
+                <div class="relative">
+                    <input
+                        type="password"
+                        name="new_password"
+                        placeholder="Password Baru"
+                        required
+                        minlength="6"
+                        class="w-full px-4 py-3 rounded-xl bg-slate-900 border border-slate-700 pr-12">
+                    <button type="button" class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-emerald-400 transition-colors toggle-pass">
+                        <i class="fa-solid fa-eye"></i>
+                    </button>
+                </div>
 
-                <input
-                    type="password"
-                    name="confirm_password"
-                    placeholder="Konfirmasi Password Baru"
-                    required
-                    minlength="6"
-                    class="w-full px-4 py-3 rounded-xl bg-slate-900 border border-slate-700">
+                <div class="relative">
+                    <input
+                        type="password"
+                        name="confirm_password"
+                        placeholder="Konfirmasi Password Baru"
+                        required
+                        minlength="6"
+                        class="w-full px-4 py-3 rounded-xl bg-slate-900 border border-slate-700 pr-12">
+                    <button type="button" class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-emerald-400 transition-colors toggle-pass">
+                        <i class="fa-solid fa-eye"></i>
+                    </button>
+                </div>
 
             </div>
 
@@ -313,5 +332,65 @@ Profil Saya
 </div>
 
 <script src="{{ url_for('static', filename='js/public/public_profile.js') }}"></script>
+
+<script>
+    // Fungsi Toast Modern
+    function showToast(message, type = 'error') {
+        const container = document.getElementById('toast-container');
+        const toast = document.createElement('div');
+        
+        const bgColor = type === 'error' ? 'bg-red-500/20 border-red-500/50 text-red-400' : 'bg-emerald-500/20 border-emerald-500/50 text-emerald-400';
+        const icon = type === 'error' ? 'fa-circle-xmark' : 'fa-circle-check';
+
+        toast.className = `flex items-center gap-3 backdrop-blur-md border ${bgColor} px-6 py-4 rounded-2xl shadow-2xl transition-all duration-500 translate-x-full pointer-events-auto`;
+        toast.innerHTML = `
+            <i class="fa-solid ${icon} text-xl"></i>
+            <p class="font-medium">${message}</p>
+        `;
+
+        container.appendChild(toast);
+
+        // Animasi Masuk
+        setTimeout(() => {
+            toast.classList.remove('translate-x-full');
+        }, 10);
+
+        // Hapus Otomatis
+        setTimeout(() => {
+            toast.classList.add('translate-x-[150%]');
+            setTimeout(() => {
+                toast.remove();
+            }, 500);
+        }, 3000);
+    }
+
+    // Validasi Email Gmail.com
+    document.getElementById('publicEditProfileForm').addEventListener('submit', function(e) {
+        const emailInput = document.getElementById('publicEmail');
+        const email = emailInput.value.toLowerCase();
+        
+        if (!email.endsWith('@gmail.com')) {
+            e.preventDefault();
+            showToast('Email wajib menggunakan domain @gmail.com', 'error');
+            emailInput.focus();
+        }
+    });
+
+    // Toggle Password
+    document.querySelectorAll('.toggle-pass').forEach(button => {
+        button.addEventListener('click', function() {
+            const input = this.parentElement.querySelector('input');
+            const icon = this.querySelector('i');
+            
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.classList.replace('fa-eye', 'fa-eye-slash');
+            } else {
+                input.type = 'password';
+                icon.classList.replace('fa-eye-slash', 'fa-eye');
+            }
+        });
+    });
+</script>
 
 {% endblock %}

@@ -28,3 +28,21 @@ def init_password_reset_table():
     conn.commit()
     cursor.close()
     conn.close()
+
+
+def init_tfidf_table():
+    """Buat tabel tfidf bila belum ada."""
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS tfidf (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            preprocessing_id INT NOT NULL,
+            term VARCHAR(255) NOT NULL,
+            tfidf_value DOUBLE NOT NULL,
+            FOREIGN KEY (preprocessing_id) REFERENCES preprocessing(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
+    """)
+    conn.commit()
+    cursor.close()
+    conn.close()
