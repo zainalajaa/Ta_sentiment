@@ -11,8 +11,7 @@
         </h1>
 
         <p class="text-gray-500">
-            Pembobotan kata menggunakan metode
-            TF-IDF.
+            Pembobotan kata menggunakan metode TF-IDF.
         </p>
 
         <div class="mt-5 flex flex-wrap gap-4">
@@ -60,19 +59,34 @@
     <p class="text-gray-500 mb-5">
         Jumlah dokumen yang mengandung tiap kata/fitur di seluruh data latih.
     </p>
+
+    <div class="mb-4 max-w-md relative">
+        <span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-400">
+            <i class="fas fa-search"></i>
+        </span>
+        <input type="text" id="searchDfInput" onkeyup="filterDfTable()" placeholder="Cari term atau fitur kata..." 
+               class="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all text-sm">
+    </div>
+
     <div class="overflow-auto max-h-64 border rounded-xl">
-        <table class="min-w-full text-sm">
+        <table class="min-w-full text-sm" id="dfTable">
             <thead class="sticky top-0 bg-gray-100 z-10">
                 <tr class="bg-gray-100">
+                    <th class="px-4 py-3 border text-center w-16">No</th>
                     <th class="px-4 py-3 border text-left">Fitur (Term)</th>
                     <th class="px-4 py-3 border text-center">DF (Jumlah Dokumen)</th>
                 </tr>
             </thead>
             <tbody>
+                {% set ns = namespace(count=0) %}
                 {% for col in columns %}
-                {% if col not in ['ID', 'Ulasan'] %}
-                <tr class="hover:bg-gray-50">
-                    <td class="px-4 py-3 border font-medium text-gray-700">{{ col }}</td>
+                {% if col not in ['ID', 'Label', 'Ulasan'] %}
+                {% set ns.count = ns.count + 1 %}
+                <tr class="hover:bg-gray-50 tr-df-row">
+                    <td class="px-4 py-3 border text-center font-medium bg-gray-50 text-gray-500 df-index">
+                        {{ ns.count }}
+                    </td>
+                    <td class="px-4 py-3 border font-medium text-gray-700 term-text">{{ col }}</td>
                     <td class="px-4 py-3 border text-center font-mono text-indigo-600">
                         {{ df_values.get(col, 0) }}
                     </td>
@@ -149,5 +163,29 @@
     </div>
 
 </div>
+
+<script>
+function filterDfTable() {
+    const input = document.getElementById("searchDfInput");
+    const filter = input.value.toLowerCase().trim(); // Tambahkan .trim()
+    const table = document.getElementById("dfTable");
+    const tr = table.getElementsByClassName("tr-df-row");
+    let visibleIndex = 1;
+
+    for (let i = 0; i < tr.length; i++) {
+        const td = tr[i].getElementsByClassName("term-text")[0];
+        if (td) {
+            const txtValue = (td.textContent || td.innerText).toLowerCase().trim(); // Paksa ke lowercase dan trim
+            if (txtValue.indexOf(filter) > -1) {
+                tr[i].style.display = "";
+                tr[i].getElementsByClassName("df-index")[0].textContent = visibleIndex;
+                visibleIndex++;
+            } else {
+                tr[i].style.display = "none";
+            }
+        }       
+    }
+}
+</script>
 
 {% endblock %}

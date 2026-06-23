@@ -18,12 +18,13 @@
 
             <p class="text-gray-500 mt-1">
                 Hasil klasifikasi sentimen menggunakan Naïve Bayes Classifier
+                pada tiga kelas sentimen: Positif, Netral, dan Negatif.
             </p>
 
         </div>
 
         <div class="text-sm text-gray-500">
-            Binary Sentiment Classification
+            3-Class Sentiment Classification
         </div>
 
     </div>
@@ -42,6 +43,10 @@
 
                     <th class="border px-6 py-4 bg-emerald-100 font-semibold">
                         Positif
+                    </th>
+
+                    <th class="border px-6 py-4 bg-yellow-100 font-semibold">
+                        Netral
                     </th>
 
                     <th class="border px-6 py-4 bg-red-100 font-semibold">
@@ -64,8 +69,32 @@
                         {{ cm[0][0] }}
                     </td>
 
-                    <td class="border px-6 py-4 text-xl font-bold text-red-500">
+                    <td class="border px-6 py-4 text-xl font-bold text-yellow-600">
                         {{ cm[0][1] }}
+                    </td>
+
+                    <td class="border px-6 py-4 text-xl font-bold text-red-500">
+                        {{ cm[0][2] }}
+                    </td>
+
+                </tr>
+
+                <tr>
+
+                    <th class="border px-6 py-4 bg-gray-50 font-semibold">
+                        Netral
+                    </th>
+
+                    <td class="border px-6 py-4 text-xl font-bold text-emerald-600">
+                        {{ cm[1][0] }}
+                    </td>
+
+                    <td class="border px-6 py-4 text-xl font-bold text-yellow-600">
+                        {{ cm[1][1] }}
+                    </td>
+
+                    <td class="border px-6 py-4 text-xl font-bold text-red-500">
+                        {{ cm[1][2] }}
                     </td>
 
                 </tr>
@@ -76,12 +105,16 @@
                         Negatif
                     </th>
 
-                    <td class="border px-6 py-4 text-xl font-bold text-red-500">
-                        {{ cm[1][0] }}
+                    <td class="border px-6 py-4 text-xl font-bold text-emerald-600">
+                        {{ cm[2][0] }}
                     </td>
 
-                    <td class="border px-6 py-4 text-xl font-bold text-emerald-600">
-                        {{ cm[1][1] }}
+                    <td class="border px-6 py-4 text-xl font-bold text-yellow-600">
+                        {{ cm[2][1] }}
+                    </td>
+
+                    <td class="border px-6 py-4 text-xl font-bold text-red-500">
+                        {{ cm[2][2] }}
                     </td>
 
                 </tr>
@@ -100,13 +133,21 @@
 
         <ul class="text-sm text-gray-600 space-y-1">
 
-            <li><strong>TP (True Positive)</strong> : Sentimen positif diprediksi positif.</li>
+            <li>
+                Baris menunjukkan kelas aktual.
+            </li>
 
-            <li><strong>TN (True Negative)</strong> : Sentimen negatif diprediksi negatif.</li>
+            <li>
+                Kolom menunjukkan kelas hasil prediksi.
+            </li>
 
-            <li><strong>FP (False Positive)</strong> : Sentimen negatif diprediksi positif.</li>
+            <li>
+                Nilai pada diagonal utama menunjukkan jumlah prediksi yang benar.
+            </li>
 
-            <li><strong>FN (False Negative)</strong> : Sentimen positif diprediksi negatif.</li>
+            <li>
+                Nilai di luar diagonal menunjukkan jumlah kesalahan klasifikasi antar kelas sentimen.
+            </li>
 
         </ul>
 
@@ -124,7 +165,8 @@
         </h2>
 
         <p class="text-gray-500 mt-1">
-            Hasil pengukuran performa model klasifikasi
+            Hasil pengukuran performa model klasifikasi sentimen menggunakan
+            metrik Accuracy, Precision, Recall, dan F1-Score.
         </p>
 
     </div>
@@ -182,7 +224,151 @@
     </div>
 
 </div>
+
+<!-- Evaluasi Per Kelas -->
+
+<div class="bg-white rounded-3xl shadow-lg p-6 mt-6">
+
 ```
+<div class="mb-6">
+
+    <h2 class="text-3xl font-bold text-gray-800">
+        Evaluasi Per Kelas Sentimen
+    </h2>
+
+    <p class="text-gray-500 mt-1">
+        Hasil Precision, Recall, F1-Score, dan Support untuk masing-masing kelas sentimen.
+    </p>
+
+</div>
+
+<div class="overflow-x-auto">
+
+    <table class="min-w-full border border-gray-200 text-center">
+
+        <thead>
+
+            <tr>
+
+                <th class="border px-4 py-3 bg-gray-100">
+                    Kelas
+                </th>
+
+                <th class="border px-4 py-3 bg-gray-100">
+                    Precision
+                </th>
+
+                <th class="border px-4 py-3 bg-gray-100">
+                    Recall
+                </th>
+
+                <th class="border px-4 py-3 bg-gray-100">
+                    F1-Score
+                </th>
+
+                <th class="border px-4 py-3 bg-gray-100">
+                    Support
+                </th>
+
+            </tr>
+
+        </thead>
+
+        <tbody>
+
+            <tr>
+
+                <td class="border px-4 py-3 font-semibold text-emerald-600">
+                    Positif
+                </td>
+
+                <td class="border px-4 py-3">
+                    {{ (report['positif']['precision'] * 100)|round(2) }}%
+                </td>
+
+                <td class="border px-4 py-3">
+                    {{ (report['positif']['recall'] * 100)|round(2) }}%
+                </td>
+
+                <td class="border px-4 py-3">
+                    {{ (report['positif']['f1-score'] * 100)|round(2) }}%
+                </td>
+
+                <td class="border px-4 py-3">
+                    {{ report['positif']['support'] }}
+                </td>
+
+            </tr>
+
+            <tr>
+
+                <td class="border px-4 py-3 font-semibold text-yellow-600">
+                    Netral
+                </td>
+
+                <td class="border px-4 py-3">
+                    {{ (report['netral']['precision'] * 100)|round(2) }}%
+                </td>
+
+                <td class="border px-4 py-3">
+                    {{ (report['netral']['recall'] * 100)|round(2) }}%
+                </td>
+
+                <td class="border px-4 py-3">
+                    {{ (report['netral']['f1-score'] * 100)|round(2) }}%
+                </td>
+
+                <td class="border px-4 py-3">
+                    {{ report['netral']['support'] }}
+                </td>
+
+            </tr>
+
+            <tr>
+
+                <td class="border px-4 py-3 font-semibold text-red-600">
+                    Negatif
+                </td>
+
+                <td class="border px-4 py-3">
+                    {{ (report['negatif']['precision'] * 100)|round(2) }}%
+                </td>
+
+                <td class="border px-4 py-3">
+                    {{ (report['negatif']['recall'] * 100)|round(2) }}%
+                </td>
+
+                <td class="border px-4 py-3">
+                    {{ (report['negatif']['f1-score'] * 100)|round(2) }}%
+                </td>
+
+                <td class="border px-4 py-3">
+                    {{ report['negatif']['support'] }}
+                </td>
+
+            </tr>
+
+        </tbody>
+
+    </table>
+
+</div>
+
+<div class="mt-4 p-4 rounded-xl bg-blue-50 border border-blue-100">
+
+    <p class="text-sm text-gray-700">
+
+        <strong>Macro Average</strong> digunakan sebagai metrik utama
+        karena penelitian menggunakan tiga kelas sentimen
+        (Positif, Netral, dan Negatif) dengan distribusi data yang berbeda.
+
+    </p>
+
+</div>
+
+
+</div>
+
 
 </div>
 

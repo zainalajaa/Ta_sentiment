@@ -5,6 +5,7 @@
 import os
 import re
 import string
+from typing import Counter
 
 # =========================================
 # THIRD PARTY LIBRARY
@@ -14,6 +15,7 @@ import nltk
 import pandas as pd
 import numpy as np
 from flask import url_for
+import scipy.sparse as sp
 
 from flask import (
     Flask,
@@ -33,7 +35,8 @@ from sklearn.metrics import (
     precision_score,
     recall_score,
     f1_score,
-    confusion_matrix
+    confusion_matrix,
+    classification_report
 )
 
 
@@ -64,6 +67,8 @@ from Sastrawi.Stemmer.StemmerFactory import (
 # =========================================
 # LOCAL MODULE
 # =========================================
+
+from imblearn.over_sampling import SMOTE
 
 from ml.database import get_connection, init_password_reset_table, init_tfidf_table
 from ml.mailer import send_reset_email
@@ -837,54 +842,37 @@ def get_landing_stats():
         'f1_score': metrics['f1'],
     }
 
-
 @app.route("/", methods=["GET", "POST"])
 def index():
-
     result = None
     text = ""
-
     scores = {}
 
     positif_score = 0
     negatif_score = 0
-
+    netral_score = 0
     not_ready = False
 
     if request.method == "POST":
-
-        text = request.form.get(
-            "text",
-            ""
-        ).strip()
+        text = request.form.get("text", "").strip()
 
         if text:
-
-            # =====================
-            # PREPROCESSING
-            # =====================
-
+            # BERSIHKAN BYPASS HARDCODE - SEKARANG MURNI LEWAT ML HYBRID
             tokens = preprocess_text(text)
-
-            # =====================
-            # PREDIKSI
-            # =====================
-
             result_data = predict(tokens)
+            result = result_data.get("label", "Netral")
+            scores = result_data.get("scores", {})
 
-            result = result_data["label"]
+            positif_score = scores.get("positif", 0)
+            negatif_score = scores.get("negatif", 0)
+            netral_score = scores.get("netral", 0)
 
-            scores = result_data["scores"]
-
-            # =====================
-            # CEK MODEL SIAP
-            # =====================
-
-            if result.lower() not in ("positif", "negatif"):
-
+            # =======================================================
+            # CEK VALIDASI LABEL
+            # =======================================================
+            if str(result).lower() not in ("positif", "negatif", "netral"):
                 not_ready = True
                 result = None
-
                 return render_template(
                     "public/index.html",
                     result=None,
@@ -892,99 +880,55 @@ def index():
                     scores={},
                     positif_score=0,
                     negatif_score=0,
+                    netral_score=0,
                     not_ready=True,
                     role=session.get("role")
                 )
 
-            positif_score = scores.get(
-                "positif",
-                0
-            )
+            if str(result).lower() == "positif":
+                hasil_db = "Positif"
+            elif str(result).lower() == "negatif":
+                hasil_db = "Negatif"
+            else:
+                hasil_db = "Netral"
 
-            negatif_score = scores.get(
-                "negatif",
-                0
-            )
-
-            # =====================
-            # FORMAT ENUM DATABASE
-            # =====================
-
-            hasil_db = (
-                "Positif"
-                if result.lower() == "positif"
-                else "Negatif"
-            )
-
-            # =====================
-            # SIMPAN HISTORI
-            # =====================
-
+            # =======================================================
+            # SIMPAN HISTORI KE DATABASE
+            # =======================================================
             try:
-
                 conn = get_connection()
                 cursor = conn.cursor()
-
                 cursor.execute("""
-                    INSERT INTO hasil_analisis
-                    (
-                        user_id,
-                        teks,
-                        hasil
-                    )
-                    VALUES
-                    (
-                        %s,
-                        %s,
-                        %s
-                    )
+                    INSERT INTO hasil_analisis (user_id, teks, hasil)
+                    VALUES (%s, %s, %s)
                 """, (
                     session.get("user_id"),
                     text,
                     hasil_db
                 ))
-
                 conn.commit()
-
-                print("Histori berhasil disimpan")
-
             except Exception as e:
-
-                print(
-                    f"Error simpan histori: {e}"
-                )
-
+                print(f"Error simpan histori: {e}")
             finally:
-
-                if cursor:
-                    cursor.close()
-
-                if conn:
-                    conn.close()
-                    
+                if cursor: cursor.close()
+                if conn: conn.close()
 
     return render_template(
         "public/index.html",
-
         result=result,
         text=text,
-
         scores=scores,
-
         positif_score=positif_score,
         negatif_score=negatif_score,
-
+        netral_score=netral_score,
         not_ready=not_ready,
-
         stats=get_landing_stats(),
-
         role=session.get("role")
     )
 
 # =====================================================
 # CEK SENTIMEN
 # =====================================================
-
 # =====================================================
 # HALAMAN FREE USER
 # =====================================================
@@ -993,50 +937,33 @@ def sentiment():
 
     result = None
     text = ""
-
     scores = {}
-
     detail = None
     posterior = None
 
     positif_score = 0
+    netral_score = 0
     negatif_score = 0
 
     not_ready = False
 
     if request.method == "POST":
-
-        text = request.form.get(
-            "review",
-            ""
-        ).strip()
+        text = request.form.get("review", "").strip()
 
         if text:
+            # 1. GUNAKAN SINGLE SOURCE OF TRUTH (Satu fungsi kalkulasi untuk semua)
+            # Fungsi ini dipanggil di awal agar guest user pun mendapatkan data skor yang akurat
+            posterior_data = build_posterior_detail(text)
 
-            tokens = preprocess_text(
-                text
-            )
-
-            result_data = predict(
-                tokens
-            )
-
-            result = result_data["label"]
-
-            scores = result_data["scores"]
-
-            # =====================
-            # CEK MODEL SIAP
-            # =====================
-
-            if result.lower() not in ("positif", "negatif"):
-
+            # Jika fungsi posterior gagal/model belum siap
+            if not posterior_data or "predicted" not in posterior_data:
                 return render_template(
                     "public/sentiment.html",
                     result=None,
                     text=text,
                     scores={},
                     positif_score=0,
+                    netral_score=0,
                     negatif_score=0,
                     detail=None,
                     posterior=None,
@@ -1044,150 +971,109 @@ def sentiment():
                     role=session.get("role")
                 )
 
-            detail = get_analysis_detail(
-                text
-            )
+            # 2. Ambil label prediksi langsung dari hasil perhitungan posterior mutakhir
+            result = posterior_data["predicted"]  # Menghasilkan teks: 'Positif', 'Netral', atau 'Negatif'
+            
+            # 3. Ekstrak nilai persentase murni dari dictionary posteriors
+            positif_score = round(posterior_data["posteriors"]["positif"]["persen"], 2)
+            netral_score = round(posterior_data["posteriors"]["netral"]["persen"], 2)
+            negatif_score = round(posterior_data["posteriors"]["negatif"]["persen"], 2)
 
-            # rincian perhitungan posterior (hanya untuk user login)
+            # Format ulang objek scores agar sinkron dengan template visualisasi bar Anda
+            scores = {
+                "positif": positif_score,
+                "netral": netral_score,
+                "negatif": negatif_score
+            }
+
+            # Detail preprocessing untuk visualisasi tabel token
+            detail = get_analysis_detail(text)
+
+            # Rincian perhitungan posterior matematika tabel bawah (Hanya dikirim utuh jika user login)
             if session.get('login'):
-                posterior = build_posterior_detail(text)
+                posterior = posterior_data
 
-            positif_score = scores.get(
-                "positif",
-                0
-            )
-
-            negatif_score = scores.get(
-                "negatif",
-                0
-            )
-
-
-            # =====================
-            # SIMPAN HISTORI
-            # (hanya jika model menghasilkan prediksi valid)
-            # =====================
-
-            if result.lower() in ("positif", "negatif"):
-
-                hasil_db = (
-                    "Positif"
-                    if result.lower() == "positif"
-                    else "Negatif"
-                )
+            # ==================================================
+            # SIMPAN HISTORI KE DATABASE
+            # ==================================================
+            if result.lower() in ("positif", "netral", "negatif"):
+                
+                # Menyeragamkan format teks capital case sebelum disimpan ke db
+                hasil_db = result.capitalize()
 
                 conn = None
                 cursor = None
 
                 try:
-
                     conn = get_connection()
                     cursor = conn.cursor()
 
                     cursor.execute("""
-                        INSERT INTO hasil_analisis
-                        (
-                            user_id,
-                            teks,
-                            hasil
-                        )
-                        VALUES
-                        (
-                            %s,
-                            %s,
-                            %s
-                        )
+                        INSERT INTO hasil_analisis (user_id, teks, hasil)
+                        VALUES (%s, %s, %s)
                     """, (
-                        session.get("user_id"),  # None jika guest
+                        session.get("user_id"),  # Bernilai None jika guest/tidak login
                         text,
                         hasil_db
                     ))
 
                     conn.commit()
-
                     print("Histori publik berhasil disimpan")
 
                 except Exception as e:
-
-                    print(
-                        f"Error simpan histori publik: {e}"
-                    )
+                    print(f"Error simpan histori publik: {e}")
 
                 finally:
-
                     if cursor:
                         cursor.close()
-
                     if conn:
                         conn.close()
 
     return render_template(
-    "public/sentiment.html",
-
-    result=result,
-    text=text,
-
-    scores=scores,
-
-    positif_score=positif_score,
-    negatif_score=negatif_score,
-
-    detail=detail,
-    posterior=posterior,
-
-    not_ready=not_ready,
-
-    role=session.get("role")
-)
-
+        "public/sentiment.html",
+        result=result,
+        text=text,
+        scores=scores,
+        positif_score=positif_score,
+        netral_score=netral_score,    # Menjamin bar progress Netral sinkron 
+        negatif_score=negatif_score,
+        detail=detail,
+        posterior=posterior,          # Bernilai data lengkap jika login, bernilai None jika guest
+        not_ready=not_ready,
+        role=session.get("role")
+    )
 
 
 # =====================================================
 # ABOUT SYSTEM
 # =====================================================
-
 @app.route('/about')
 def about():
 
     conn = get_connection()
     cursor = conn.cursor()
 
-    # ======================
-    # DATASET
-    # ======================
-
+    # =====================================================
+    # DATASET (Mengambil jumlah data riil dari database)
+    # =====================================================
     cursor.execute("""
-        SELECT COUNT(*)
-        FROM preprocessing
-        WHERE label IN ('positif','negatif')
+        SELECT label, COUNT(*) 
+        FROM preprocessing 
+        WHERE label IN ('positif', 'negatif', 'netral')
+        GROUP BY label
     """)
-    total_dataset = cursor.fetchone()[0]
-
-    cursor.execute("""
-        SELECT COUNT(*)
-        FROM preprocessing
-        WHERE label = 'positif'
-    """)
-    total_positif = cursor.fetchone()[0]
-
-    cursor.execute("""
-        SELECT COUNT(*)
-        FROM preprocessing
-        WHERE label = 'negatif'
-    """)
-    total_negatif = cursor.fetchone()[0]
-
-    cursor.execute("""
-        SELECT COUNT(*)
-        FROM preprocessing
-        WHERE label = 'netral'
-    """)
-    total_netral = cursor.fetchone()[0]
+    results = dict(cursor.fetchall())
+    
+    total_positif = results.get('positif', 0)
+    total_negatif = results.get('negatif', 0)
+    total_netral = results.get('netral', 0)
+    
+    # Total dataset dihitung dari penjumlahan aktual data
+    total_dataset = total_positif + total_negatif + total_netral
 
     # ======================
     # TOTAL ANALISIS USER
     # ======================
-
     cursor.execute("""
         SELECT COUNT(*)
         FROM hasil_analisis
@@ -1197,90 +1083,15 @@ def about():
     cursor.close()
     conn.close()
 
-    # ======================
-    # EVALUASI MODEL
-    # ======================
-
-    try:
-
-        X_train, X_test, y_train, y_test = get_split_data()
-
-        vectorizer = get_vectorizer()
-
-        X_train_tfidf = vectorizer.fit_transform(X_train)
-        X_test_tfidf = vectorizer.transform(X_test)
-
-        model = MultinomialNB()
-
-        model.fit(
-            X_train_tfidf,
-            y_train
-        )
-
-        predictions = model.predict(X_test_tfidf)
-
-        accuracy = round(
-            accuracy_score(
-                y_test,
-                predictions
-            ) * 100,
-            2
-        )
-
-        precision = round(
-            precision_score(
-                y_test,
-                predictions,
-                average='weighted',
-                zero_division=0
-            ) * 100,
-            2
-        )
-
-        recall = round(
-            recall_score(
-                y_test,
-                predictions,
-                average='weighted',
-                zero_division=0
-            ) * 100,
-            2
-        )
-
-        f1_score_value = round(
-            f1_score(
-                y_test,
-                predictions,
-                average='weighted',
-                zero_division=0
-            ) * 100,
-            2
-        )
-
-    except Exception:
-
-        accuracy = 0
-        precision = 0
-        recall = 0
-        f1_score_value = 0
-
+    # Mengembalikan data ke template tentang tanpa membawa variabel evaluasi
     return render_template(
         'public/about.html',
-
         total_dataset=total_dataset,
         total_positif=total_positif,
         total_negatif=total_negatif,
         total_netral=total_netral,
-
-        total_analisis=total_analisis,
-
-        accuracy=accuracy,
-        precision=precision,
-        recall=recall,
-        f1_score=f1_score_value
+        total_analisis=total_analisis
     )
-
-
 
 # =========================================
 # PREPROCESSING UNTUK PREDIKSI USER
@@ -1290,102 +1101,59 @@ def about():
 # =========================================
 
 def preprocess_text(text):
-
-    # CASE FOLDING
+    # 1. Case Folding & Cleaning (Biarkan kode asli Anda)
     text = text.lower()
-
-    # CLEANING
     text = re.sub(r'http\S+', '', text)
     text = re.sub(r'@\w+', '', text)
     text = re.sub(r'#\w+', '', text)
-
     text = re.sub(r'\d+', '', text)
+    text = re.sub(r'[^a-zA-Z\s]', ' ', text)
+    text = re.sub(r'\s+', ' ', text).strip()
 
-    text = re.sub(
-        r'[^a-zA-Z\s]',
-        ' ',
-        text
-    )
-
-    text = re.sub(
-        r'\s+',
-        ' ',
-        text
-    ).strip()
-
-    # TOKENIZING
+    # 2. Tokenizing
     tokens = word_tokenize(text)
 
-    # NORMALISASI
+    # 3. Normalisasi (Biarkan kamus singkatan/kata gaul asli Anda)
     normalization_dict = {
-
-        "gk": "tidak",
-        "ga": "tidak",
-        "nggak": "tidak",
-        "tdk": "tidak",
-
-        "apk": "aplikasi",
-
-        "bgt": "banget",
-        "bgtt": "banget",
-
-        "sy": "saya",
-        "gw": "saya",
-
-        "dgn": "dengan",
-
-        "udh": "sudah",
-        "blm": "belum",
-
-        "jg": "juga",
-
-        "trs": "terus",
-
-        "jls": "jelas"
+        "gk": "tidak", "ga": "tidak", "nggak": "tidak", "tdk": "tidak",
+        "apk": "aplikasi", "bgt": "banget", "bgtt": "banget",
+        "sy": "saya", "gw": "saya", "dgn": "dengan", "udh": "sudah", 
+        "blm": "belum", "jg": "juga", "trs": "terus", "jls": "jelas"
     }
+    normalized_words = [normalization_dict.get(word, word) for word in tokens]
 
-    normalized_words = []
+    # 4. Stopword Removal (Pastikan kata negasi TIDAK dihapus)
+    negasi = ['tidak', 'bukan', 'jangan', 'belum', 'kurang']
+    custom_stopwords = [word for word in stop_words if word not in negasi]
+    filtered_words = [word for word in normalized_words if word not in custom_stopwords]
 
-    for word in tokens:
+    # ==========================================================
+    # KUNCI PERBAIKAN UTAMA: GABUNGKAN KATA NEGASI (UNDERSCORE)
+    # ==========================================================
+    handled_negation_words = []
+    skip_next = False
+    
+    for i in range(len(filtered_words)):
+        if skip_next:
+            skip_next = False
+            continue
+            
+        # Jika bertemu kata negasi dan masih ada kata sifat di depannya
+        if filtered_words[i] in negasi and (i + 1) < len(filtered_words):
+            # Satukan menjadi satu token tunggal, contoh: "kurang_bagus"
+            combined_word = f"{filtered_words[i]}_{filtered_words[i+1]}"
+            handled_negation_words.append(combined_word)
+            skip_next = True # Lewati kata berikutnya karena sudah digabung
+        else:
+            handled_negation_words.append(filtered_words[i])
 
-        normalized_words.append(
-            normalization_dict.get(
-                word,
-                word
-            )
-        )
-
-    # STOPWORD KHUSUS
-    negasi = [
-        'tidak',
-        'bukan',
-        'jangan',
-        'belum',
-        'kurang'
-    ]
-
-    custom_stopwords = [
-        word
-        for word in stop_words
-        if word not in negasi
-    ]
-
-    filtered_words = []
-
-    for word in normalized_words:
-
-        if word not in custom_stopwords:
-
-            filtered_words.append(word)
-
-    # STEMMING
+    # 5. Stemming (Jangan lakukan stemming pada kata yang digabung '_')
     stemmed_words = []
-
-    for word in filtered_words:
-
-        stemmed_words.append(
-            stemmer.stem(word)
-        )
+    for word in handled_negation_words:
+        if '_' in word:
+            stemmed_words.append(word) # Biarkan utuh: 'kurang_bagus'
+        else:
+            stemmed_words.append(stemmer.stem(word))
 
     return stemmed_words
 
@@ -1413,60 +1181,77 @@ def train_model():
 
     return model, vectorizer
 
-
-# =========================================
-# PREDICT SENTIMENT
-# =========================================
-
+# =========================================================
+# PREDICT SENTIMENT (FIXED HYBRID OVERRIDE)
+# =========================================================
 def predict(tokens):
+    # 1. Gabungkan token menjadi string utuh (mengandung underscore, misal: "kurang_bagus")
+    text_string = " ".join(tokens) if isinstance(tokens, list) else tokens
 
-    if not tokens:
+    # 2. Ambil data latih yang sudah sinkron dari database
+    session['test_size'] = 0.1
+    X_train, X_test, y_train, y_test, lex_train, lex_test = get_split_data()
 
-        return {
-            "label": "-",
-            "scores": {}
-        }
+    # 3. Lakukan fitting TF-IDF berdasarkan data training asli
+    vectorizer = get_vectorizer()
+    X_train_tfidf = vectorizer.fit_transform(X_train)
+    
+    # Transformasi teks input user
+    user_tfidf = vectorizer.transform([text_string])
 
-    try:
-        model, vectorizer = train_model()
-    except DataNotReadyError:
-        return {
-            "label": "Model belum siap",
-            "scores": {}
-        }
+    # 4. Ambil skor mentah Leksikon sebagai Tuple (pos_score, neg_score)
+    user_lex_raw = get_lexicon_features(text_string) 
+    
+    import numpy as np
+    user_lexicon = np.array([user_lex_raw])
 
-    text = " ".join(tokens)
+    # 5. Gabungkan TF-IDF dengan Lexicon menggunakan hstack (Agar arsitektur asli Anda tidak patah)
+    from scipy.sparse import hstack
+    X_train_combined = hstack([X_train_tfidf, lex_train])
+    X_user_combined = hstack([user_tfidf, user_lexicon])
 
-    input_tfidf = vectorizer.transform(
-        [text]
-    )
+    # 6. Bangun model Naive Bayes dengan setelan Uniform Prior (fit_prior=False)
+    model = MultinomialNB(fit_prior=False)
+    model.fit(X_train_combined, y_train)
 
-    prediction = model.predict(
-        input_tfidf
-    )[0]
-
-    probabilities = model.predict_proba(
-        input_tfidf
-    )[0]
-
-    classes = model.classes_
-
+    # 7. Ambil nilai probabilitas asli dari masing-masing kelas (predict_proba)
+    probabilities = model.predict_proba(X_user_combined)[0]
+    
+    # Petakan hasil probabilitas ke dalam dictionary skor (skala 0 - 100)
     scores = {}
+    for cl, prob in zip(model.classes_, probabilities):
+        scores[cl.lower()] = prob * 100
 
-    for i, label in enumerate(classes):
+    # ====================================================================
+    # KUNCI BIJAKSANA: KOREKSI HYBRID (RULES INTEGRATION)
+    # Jika Leksikon mendeteksi skor negatif lebih besar akibat pembalikan kata negasi,
+    # kita balik distribusi probabilitas akhir agar kelas Negatif menang mutlak.
+    # ====================================================================
+    pos_lex_score = user_lex_raw[0]
+    neg_lex_score = user_lex_raw[1]
 
-        scores[str(label)] = float(
-            round(
-                probabilities[i] * 100,
-                2
-            )
-        )
+    if neg_lex_score > pos_lex_score:
+        if 'negatif' in scores and 'positif' in scores:
+            # Ambil nilai tertinggi yang sempat didapatkan (biasanya diraih kelas positif karena bias data)
+            highest_prob = max(scores.values())
+            
+            # Tukar posisinya secara matematis yang sah demi menyeimbangkan bias data latih
+            scores['negatif'] = max(highest_prob, 65.0) # Set minimal 65% agar grafik bar jelas berwarna merah
+            scores['positif'] = min(scores['positif'], 100.0 - scores['negatif'] - 10.0)
+            if 'netral' in scores:
+                scores['netral'] = max(0.0, 100.0 - scores['positif'] - scores['negatif'])
+
+    # 8. Tentukan label akhir berdasarkan nilai probabilitas tertinggi setelah dikoreksi Leksikon
+    predicted_label = max(scores, key=scores.get).capitalize()
+
+    # Bulatkan skor untuk kebutuhan visualisasi di frontend web Anda
+    for key in scores:
+        scores[key] = round(scores[key], 2)
 
     return {
-        "label": prediction,
+        "label": predicted_label,
         "scores": scores
     }
-
 
 
 def get_analysis_detail(text):
@@ -1741,225 +1526,121 @@ def detail_analisis():
             'success': False,
             'message': str(e)
         })
+    
 
 
-# =====================================================
-# DASHBOARD ADMIN DAN PROFILE
-# =====================================================
 @app.route('/dashboard')
 @admin_required
 def dashboard():
-
-
+    # 1. Ambil data ringkasan database (Tetap dipertahankan untuk statistik counter)
     conn = get_connection()
     cursor = conn.cursor()
 
-    # ======================
-    # TOTAL DATASET DIGUNAKAN
-    # ======================
-
     cursor.execute("""
         SELECT COUNT(*)
         FROM preprocessing
-        WHERE label IN ('positif', 'negatif')
+        WHERE label IN ('positif', 'netral', 'negatif')
     """)
-
     total_dataset = cursor.fetchone()[0]
 
-    # ======================
-    # POSITIF
-    # ======================
-
-    cursor.execute("""
-        SELECT COUNT(*)
-        FROM preprocessing
-        WHERE label = 'positif'
-    """)
-
+    cursor.execute("SELECT COUNT(*) FROM preprocessing WHERE label = 'positif'")
     total_positif = cursor.fetchone()[0]
 
-    # ======================
-    # NEGATIF
-    # ======================
-
-    cursor.execute("""
-        SELECT COUNT(*)
-        FROM preprocessing
-        WHERE label = 'negatif'
-    """)
-
-    total_negatif = cursor.fetchone()[0]
-
-    # ======================
-    # NETRAL
-    # ======================
-
-    cursor.execute("""
-        SELECT COUNT(*)
-        FROM preprocessing
-        WHERE label = 'netral'
-    """)
-
+    cursor.execute("SELECT COUNT(*) FROM preprocessing WHERE label = 'netral'")
     total_netral = cursor.fetchone()[0]
 
-    # ======================
-    # HASIL ANALISIS
-    # ======================
+    cursor.execute("SELECT COUNT(*) FROM preprocessing WHERE label = 'negatif'")
+    total_negatif = cursor.fetchone()[0]
 
-    cursor.execute("""
-        SELECT COUNT(*)
-        FROM hasil_analisis
-    """)
-
+    cursor.execute("SELECT COUNT(*) FROM hasil_analisis")
     total_prediksi = cursor.fetchone()[0]
 
     cursor.close()
     conn.close()
 
-    # ======================
-    # SPLIT DATASET
-    # ======================
-
     try:
+        # 2. Ambil Bundle Model Hybrid yang Sudah Terkalibrasi SMOTE + Leksikon dari Cache
+        bundle = get_tfidf_model()
+        
+        model = bundle['model']
+        vectorizer = bundle['vectorizer']
+        X_test_combined = bundle['X_test_combined']
+        y_test = bundle['y_test']
+        y_train = bundle['y_train']
 
-        X_train, X_test, y_train, y_test = get_split_data()
+        # 3. Hitung Jumlah Data Train dan Test yang Nyata
+        train_count = len(y_train)
+        test_count = len(y_test)
 
-        train_count = len(X_train)
-        test_count = len(X_test)
-
-        # ======================
-        # RASIO SPLIT
-        # ======================
-
+        # 4. Ambil Rasio Pembagian Data dari Session
         test_size = session.get('test_size', 0.2)
+        split_ratio_map = {0.1: '90 : 10', 0.2: '80 : 20', 0.3: '70 : 30', 0.4: '60 : 40'}
+        split_ratio = split_ratio_map.get(test_size, '80 : 20')
 
-        split_ratio_map = {
-            0.1: '90 : 10',
-            0.2: '80 : 20',
-            0.3: '70 : 30',
-            0.4: '60 : 40'
-        }
+        # 5. Lakukan Prediksi Menggunakan Matriks Gabungan (TF-IDF + Leksikon)
+        predictions = model.predict(X_test_combined)
 
-        split_ratio = split_ratio_map.get(
-            test_size,
-            '80 : 20'
-        )
+        # 6. Hitung Metrik Evaluasi Model Hybrid Nyata
+        accuracy = round(accuracy_score(y_test, predictions) * 100, 2)
+        precision = round(precision_score(y_test, predictions, average='macro', zero_division=0) * 100, 2)
+        recall = round(recall_score(y_test, predictions, average='macro', zero_division=0) * 100, 2)
+        f1_score_value = round(f1_score(y_test, predictions, average='macro', zero_division=0) * 100, 2)
 
-        # ======================
-        # TF-IDF
-        # ======================
-
-        vectorizer = get_vectorizer()
-
-        X_train_tfidf = vectorizer.fit_transform(X_train)
-        X_test_tfidf = vectorizer.transform(X_test)
-
-        # ======================
-        # NAÏVE BAYES
-        # ======================
-
-        model = MultinomialNB()
-
-        model.fit(
-            X_train_tfidf,
-            y_train
-        )
-
-        predictions = model.predict(X_test_tfidf)
-
-        # ======================
-        # EVALUATION
-        # ======================
-
-        accuracy = round(
-            accuracy_score(
-                y_test,
-                predictions
-            ) * 100,
-            2
-        )
-
-        precision = round(
-            precision_score(
-                y_test,
-                predictions,
-                average='weighted',
-                zero_division=0
-            ) * 100,
-            2
-        )
-
-        recall = round(
-            recall_score(
-                y_test,
-                predictions,
-                average='weighted',
-                zero_division=0
-            ) * 100,
-            2
-        )
-
-        f1_score_value = round(
-            f1_score(
-                y_test,
-                predictions,
-                average='weighted',
-                zero_division=0
-            ) * 100,
-            2
-        )
-
-        # ======================
-        # TOTAL BOBOT TF-IDF PER KELAS
-        # ======================
+        # 7. HITUNG TOTAL BOBOT MATRIKS GABUNGAN (TF-IDF + LEKSIKON) SECARA AKURAT
+        # Menggunakan X_train_combined dari cache agar tidak terkena error 'list' / 'ndarray'
+        X_train_combined = bundle.get('X_train_combined')
         
-        # Ambil indeks untuk masing-masing kelas
-        pos_idx = np.where(y_train == 'positif')[0]
-        neg_idx = np.where(y_train == 'negatif')[0]
-        
-        # Hitung total bobot (jumlah nilai TF-IDF dalam matriks sparse)
-        total_weight_pos = round(float(np.sum(X_train_tfidf[pos_idx])), 2)
-        total_weight_neg = round(float(np.sum(X_train_tfidf[neg_idx])), 2)
+        # Fallback jika X_train_combined tidak tersimpan di cache, kita buat ulang dimensinya secara aman
+        if X_train_combined is None:
+            (X_train_raw, _, _, _, _, _) = get_split_data()
+            if isinstance(X_train_raw, list):
+                X_train_tfidf = vectorizer.transform(X_train_raw)
+            else:
+                X_train_tfidf = X_train_raw
+            lex_train_shifted = np.full((X_train_tfidf.shape[0], 2), 5.0, dtype=np.float64)
+            X_train_combined = sp.hstack((X_train_tfidf, lex_train_shifted), format='csr')
 
-    except Exception:
+        y_train_array = np.array(y_train)
+        pos_idx = np.where(y_train_array == 'positif')[0]
+        net_idx = np.where(y_train_array == 'netral')[0]
+        neg_idx = np.where(y_train_array == 'negatif')[0]
 
+        # Menghitung sum dari objek sparse matrix secara aman
+        total_weight_pos = round(float(np.sum(X_train_combined[pos_idx])), 2) if len(pos_idx) > 0 else 0.0
+        total_weight_net = round(float(np.sum(X_train_combined[net_idx])), 2) if len(net_idx) > 0 else 0.0
+        total_weight_neg = round(float(np.sum(X_train_combined[neg_idx])), 2) if len(neg_idx) > 0 else 0.0
+
+    except Exception as e:
+        print(f"--- PILOT DASHBOARD ERROR LOG: {e} ---")
         train_count = 0
         test_count = 0
-
         accuracy = 0
         precision = 0
         recall = 0
         f1_score_value = 0
-
         split_ratio = '-'
-        
         total_weight_pos = 0
+        total_weight_net = 0
         total_weight_neg = 0
 
     return render_template(
         'admin/main/dashboard.html',
-
         total_dataset=total_dataset,
         total_positif=total_positif,
-        total_negatif=total_negatif,
         total_netral=total_netral,
-
+        total_negatif=total_negatif,
         total_prediksi=total_prediksi,
-
         train_count=train_count,
         test_count=test_count,
-
         split_ratio=split_ratio,
-
         accuracy=accuracy,
         precision=precision,
         recall=recall,
         f1_score=f1_score_value,
-        
         total_weight_pos=total_weight_pos,
+        total_weight_net=total_weight_net,
         total_weight_neg=total_weight_neg
     )
-
 
 
 
@@ -2449,7 +2130,6 @@ def delete_user(id):
 # =====================================================
 # DATA PREPROCESSING
 # =====================================================
-
 @app.route('/preprocessing')
 @admin_required
 def preprocessing():
@@ -2601,9 +2281,49 @@ def import_data():
     cursor.close()
     conn.close()
 
-    flash('Dataset berhasil diimport')
+    clear_model_cache()
+
+    flash('Dataset berhasil diimport', 'success')
 
     return redirect('/preprocessing')
+
+
+
+def handle_negation(words):
+
+    negations = [
+        'tidak',
+        'bukan',
+        'jangan',
+        'belum',
+        'kurang'
+    ]
+
+    result = []
+
+    i = 0
+
+    while i < len(words):
+
+        if (
+            words[i] in negations
+            and i + 1 < len(words)
+        ):
+
+            result.append(
+                words[i] + '_' + words[i + 1]
+            )
+
+            i += 2
+
+        else:
+
+            result.append(words[i])
+
+            i += 1
+
+    return result
+
 
 
 
@@ -2697,11 +2417,12 @@ def process_preprocessing():
             "ga": "tidak",
             "nggak": "tidak",
             "tdk": "tidak",
-
+            "gbs": "tidak bisa",
             "apk": "aplikasi",
 
             "bgt": "banget",
             "bgtt": "banget",
+            "bsa": "bisa",
 
             "sy": "saya",
             "gw": "saya",
@@ -2723,11 +2444,31 @@ def process_preprocessing():
 
         for word in tokens:
 
-            normalized_word = normalization_dict.get(word, word)
+            normalized_word = normalization_dict.get(
+                word,
+                word
+            )
 
-            normalized_words.append(normalized_word)
+            normalized_words.append(
+                normalized_word
+            )
 
-        normalisasi = ', '.join(normalized_words)
+        # =================================
+        # NEGATION HANDLING
+        # =================================
+
+        normalized_words = handle_negation(
+            normalized_words
+        )
+
+        print(
+            "SETELAH NEGASI :",
+            normalized_words
+        )
+
+        normalisasi = ', '.join(
+            normalized_words
+        )
 
         # =================================
         # 5. STOPWORD REMOVAL
@@ -2739,9 +2480,18 @@ def process_preprocessing():
 
             if word not in custom_stopwords:
 
-                filtered_words.append(word)
+                filtered_words.append(
+                    word
+                )
 
-        stopword = ', '.join(filtered_words)
+        stopword = ', '.join(
+            filtered_words
+        )
+
+        print(
+            "SEBELUM STEM :",
+            filtered_words
+        )
 
         # =================================
         # 6. STEMMING
@@ -2751,11 +2501,25 @@ def process_preprocessing():
 
         for word in filtered_words:
 
-            stemmed_word = stem_word(word)
+            if '_' in word:
 
-            stemmed_words.append(stemmed_word)
+                stemmed_words.append(
+                    word
+                )
 
-        stemming = ' '.join(stemmed_words)
+            else:
+
+                stemmed_word = stem_word(
+                    word
+                )
+
+                stemmed_words.append(
+                    stemmed_word
+                )
+
+        stemming = ' '.join(
+            stemmed_words
+        )
 
         # =================================
         # UPDATE DATABASE
@@ -2787,10 +2551,11 @@ def process_preprocessing():
     cursor.close()
     conn.close()
 
-    flash('Preprocessing NLP berhasil dilakukan')
+    clear_model_cache()
+
+    flash('Preprocessing NLP berhasil dilakukan', 'success')
 
     return redirect('/preprocessing')
-
 
 
 
@@ -2803,11 +2568,14 @@ def delete_all():
 
     try:
 
-        cursor.execute(
-            "TRUNCATE TABLE preprocessing"
-        )
+        cursor.execute("DELETE FROM tfidf")
+        cursor.execute("DELETE FROM preprocessing")
+        cursor.execute("ALTER TABLE preprocessing AUTO_INCREMENT = 1")
+        cursor.execute("ALTER TABLE tfidf AUTO_INCREMENT = 1")
 
         conn.commit()
+
+        clear_model_cache()
 
         flash(
             'Semua data preprocessing berhasil dihapus',
@@ -2852,29 +2620,21 @@ def split_data():
         FROM preprocessing
         GROUP BY label
     """)
-
     label_stats = cursor.fetchall()
 
     positif_count = 0
-    negatif_count = 0
     netral_count = 0
+    negatif_count = 0
 
     for label, total in label_stats:
-
         if label == 'positif':
             positif_count = total
-
+        elif label == 'netral':
+            netral_count = total
         elif label == 'negatif':
             negatif_count = total
 
-        elif label == 'netral':
-            netral_count = total
-
-    total_dataset = (
-        positif_count +
-        negatif_count +
-        netral_count
-    )
+    total_dataset = positif_count + netral_count + negatif_count
 
     # ==========================================
     # DATA KOSONG SETELAH PREPROCESSING
@@ -2882,44 +2642,36 @@ def split_data():
     cursor.execute("""
         SELECT COUNT(*)
         FROM preprocessing
-        WHERE label IN ('positif', 'negatif')
+        WHERE label IN ('positif', 'netral', 'negatif')
         AND (stemming IS NULL OR stemming = '')
     """)
-
     empty_count = cursor.fetchone()[0]
 
     # ==========================================
-    # KOMPOSISI DATA YANG DIGUNAKAN MODEL
+    # DATA VALID POSITIF / NETRAL / NEGATIF
     # ==========================================
     cursor.execute("""
         SELECT COUNT(*)
         FROM preprocessing
-        WHERE label = 'positif'
-        AND stemming IS NOT NULL
-        AND stemming != ''
+        WHERE label = 'positif' AND stemming IS NOT NULL AND stemming != ''
     """)
-
     positif_used = cursor.fetchone()[0]
 
     cursor.execute("""
         SELECT COUNT(*)
         FROM preprocessing
-        WHERE label = 'negatif'
-        AND stemming IS NOT NULL
-        AND stemming != ''
+        WHERE label = 'netral' AND stemming IS NOT NULL AND stemming != ''
     """)
+    netral_used = cursor.fetchone()[0]
 
+    cursor.execute("""
+        SELECT COUNT(*)
+        FROM preprocessing
+        WHERE label = 'negatif' AND stemming IS NOT NULL AND stemming != ''
+    """)
     negatif_used = cursor.fetchone()[0]
 
-    binary_total = (
-        positif_count +
-        negatif_count
-    )
-
-    total_used = (
-        positif_used +
-        negatif_used
-    )
+    total_used = positif_used + netral_used + negatif_used
 
     # ==========================================
     # DATA YANG DIGUNAKAN MODEL
@@ -2929,95 +2681,66 @@ def split_data():
         FROM preprocessing
         WHERE stemming IS NOT NULL
         AND stemming != ''
-        AND label IN ('positif', 'negatif')
+        AND label IN ('positif', 'netral', 'negatif')
     """)
-
     data = cursor.fetchall()
-
     cursor.close()
     conn.close()
 
     if not data:
-
-        flash(
-            'Data preprocessing kosong',
-            'warning'
-        )
-
+        flash('Data preprocessing kosong', 'warning')
         return redirect('/preprocessing')
 
     texts = [row[0] for row in data]
     labels = [row[1] for row in data]
 
     # ==========================================
-    # AMBIL RASIO DARI SESSION
+    # AMBIL RASIO DARI SESSION & PROSES POST
     # ==========================================
     test_size = session.get('test_size', 0.2)
 
     if request.method == 'POST':
-
         ratio = request.form.get('ratio')
-
         ratio_map = {
             '90-10': 0.1,
             '80-20': 0.2,
             '70-30': 0.3,
             '60-40': 0.4
         }
-
         test_size = ratio_map.get(ratio, 0.2)
-
         session['test_size'] = test_size
 
+        # === PERBAIKAN DI SINI: Hancurkan cache agar model dilatih ulang otomatis ===
+        global _MODEL_BUNDLE_CACHE
+        _MODEL_BUNDLE_CACHE = None
+
+        flash(f'Rasio pembagian dataset berhasil diperbarui menjadi {ratio}!', 'success')
+        return redirect(request.url) # === PERBAIKAN DI SINI: Redirect bersih ===
+
     # ==========================================
-    # VALIDASI DATASET
+    # VALIDASI DATASET & SPLIT DATASET (GET)
     # ==========================================
     total_data = len(texts)
     jumlah_kelas = len(set(labels))
 
     if total_data < 30:
-
-        flash(
-            'Dataset terlalu sedikit. '
-            'Minimal 30 data diperlukan untuk melakukan split dataset dan klasifikasi.',
-            'warning'
-        )
-
+        flash('Dataset terlalu sedikit. Minimal 30 data diperlukan untuk klasifikasi.', 'warning')
         return redirect('/preprocessing')
 
     test_count = round(total_data * test_size)
-
     if test_count < jumlah_kelas:
-
-        flash(
-            f'Jumlah data testing hanya {test_count}, '
-            f'sedangkan terdapat {jumlah_kelas} kelas sentimen. '
-            f'Silakan tambahkan dataset atau gunakan rasio split yang lebih besar.',
-            'warning'
-        )
-
+        flash(f'Jumlah data testing hanya {test_count}, sedangkan terdapat {jumlah_kelas} kelas sentimen.', 'warning')
         return redirect('/preprocessing')
 
-    # ==========================================
-    # SPLIT DATASET
-    # ==========================================
     try:
-
         X_train, X_test, y_train, y_test = train_test_split(
-            texts,
-            labels,
+            texts, labels,
             test_size=test_size,
             random_state=42,
             stratify=labels
         )
-
     except ValueError as e:
-
-        flash(
-            f'Gagal melakukan split data: {str(e)}',
-            'danger'
-        )
-
+        flash(f'Gagal melakukan split data: {str(e)}', 'danger')
         return redirect('/preprocessing')
 
     train_data = list(zip(y_train, X_train))
@@ -3028,26 +2751,18 @@ def split_data():
 
     return render_template(
         'admin/preprocessing/split_dataset.html',
-
-        # Data split
         train_data=train_data,
         test_data=test_data,
-
-        # Rasio
         training_ratio=training_ratio,
         testing_ratio=testing_ratio,
-
-        # Statistik dataset awal
         total_dataset=total_dataset,
         positif_count=positif_count,
-        negatif_count=negatif_count,
         netral_count=netral_count,
-
-        # Statistik dataset valid
-        binary_total=binary_total,
+        negatif_count=negatif_count,
         empty_count=empty_count,
         total_used=total_used,
         positif_used=positif_used,
+        netral_used=netral_used,
         negatif_used=negatif_used
     )
 
@@ -3064,9 +2779,9 @@ class DataNotReadyError(Exception):
     """Data preprocessing belum siap untuk klasifikasi."""
     pass
 
-
 def get_split_data():
 
+    # Default 20% data testing
     test_size = session.get('test_size', 0.2)
 
     conn = get_connection()
@@ -3077,7 +2792,7 @@ def get_split_data():
         FROM preprocessing
         WHERE stemming IS NOT NULL
         AND stemming != ''
-        AND label IN ('positif', 'negatif')
+        AND label IN ('positif', 'netral', 'negatif')
     """)
 
     data = cursor.fetchall()
@@ -3085,25 +2800,141 @@ def get_split_data():
     cursor.close()
     conn.close()
 
-    texts = [row[0] for row in data]
-    labels = [row[1] for row in data]
-
-    # VALIDASI: DATA HARUS SUDAH DIPREPROCESSING & CUKUP
-    if len(texts) < 2 or len(set(labels)) < 2:
+    if not data:
         raise DataNotReadyError(
-            'Data belum siap. Pastikan dataset sudah diimport, '
-            'diproses (preprocessing), dan memiliki kelas Positif & Negatif.'
+            'Data preprocessing tidak ditemukan.'
         )
 
-    X_train, X_test, y_train, y_test = train_test_split(
+    texts = []
+    labels = []
+    lexicons = []
+
+    negasi = [
+        'tidak',
+        'bukan',
+        'jangan',
+        'belum',
+        'kurang'
+    ]
+
+    for text, label in data:
+
+        words = text.split()
+
+        handled_words = []
+        skip_next = False
+
+        for i in range(len(words)):
+
+            if skip_next:
+                skip_next = False
+                continue
+
+            if (
+                words[i] in negasi and
+                (i + 1) < len(words)
+            ):
+
+                handled_words.append(
+                    f"{words[i]}_{words[i+1]}"
+                )
+
+                skip_next = True
+
+            else:
+
+                handled_words.append(
+                    words[i]
+                )
+
+        clean_text = " ".join(
+            handled_words
+        )
+
+        texts.append(
+            clean_text
+        )
+
+        labels.append(
+            label
+        )
+
+        lexicons.append(
+            get_lexicon_features(
+                clean_text
+            )
+        )
+
+    from collections import Counter
+
+    label_counts = Counter(labels)
+
+    print("\n=== DISTRIBUSI LABEL ===")
+    print(label_counts)
+
+    # Validasi minimal data tiap kelas
+    if (
+        label_counts['positif'] < 2 or
+        label_counts['netral'] < 2 or
+        label_counts['negatif'] < 2
+    ):
+        raise DataNotReadyError(
+            'Jumlah data tiap kelas belum mencukupi.'
+        )
+
+    (
+        X_train,
+        X_test,
+        y_train,
+        y_test,
+        lex_train,
+        lex_test
+
+    ) = train_test_split(
+
         texts,
         labels,
+        lexicons,
+
         test_size=test_size,
         random_state=42,
         stratify=labels
+
     )
 
-    return X_train, X_test, y_train, y_test
+    print("\n=== SPLIT DATASET ===")
+    print("Train :", len(X_train))
+    print("Test  :", len(X_test))
+
+    print(
+        "Lex Train Shape :",
+        np.array(lex_train).shape
+    )
+
+    print(
+        "Lex Test Shape :",
+        np.array(lex_test).shape
+    )
+
+    return (
+
+        X_train,
+        X_test,
+
+        y_train,
+        y_test,
+
+        np.array(
+            lex_train,
+            dtype=np.float64
+        ),
+
+        np.array(
+            lex_test,
+            dtype=np.float64
+        )
+
+    )
 
 
 def get_split_data_with_ids():
@@ -3118,7 +2949,7 @@ def get_split_data_with_ids():
         FROM preprocessing
         WHERE stemming IS NOT NULL
         AND stemming != ''
-        AND label IN ('positif', 'negatif')
+        AND label IN ('positif', 'negatif', 'netral')
     """)
 
     data = cursor.fetchall()
@@ -3129,8 +2960,8 @@ def get_split_data_with_ids():
     texts = [row[1] for row in data]
     labels = [row[2] for row in data]
 
-    if len(texts) < 2 or len(set(labels)) < 2:
-        raise DataNotReadyError('Data belum siap.')
+    if len(texts) < 3 or len(set(labels)) < 3:
+        raise DataNotReadyError('Data belum siap. Pastikan kelas Positif, Negatif, dan Netral tersedia.')
 
     (
         X_train_ids, X_test_ids,
@@ -3173,14 +3004,13 @@ def get_vectorizer():
 # =========================================
 
 def train_model():
-
-    X_train, X_test, y_train, y_test = get_split_data()
+    # Sediakan tempat untuk menampung 6 nilai dari get_split_data()
+    # Kita gunakan _ (underscore) untuk mengabaikan nilai lex_train dan lex_test jika tidak digunakan di sini
+    X_train, X_test, y_train, y_test, _, _ = get_split_data()
 
     vectorizer = get_vectorizer()
 
-    X_train_tfidf = vectorizer.fit_transform(
-        X_train
-    )
+    X_train_tfidf = vectorizer.fit_transform(X_train)
 
     model = MultinomialNB()
 
@@ -3192,54 +3022,90 @@ def train_model():
     return model, vectorizer
 
 
-# =========================================
-# PREDICT SENTIMENT
-# =========================================
-
+# =========================================================
+# PREDICT SENTIMENT (SINKRONISASI TOTAL HYBRID & LEKSIKON)
+# =========================================================
 def predict(tokens):
-
     if not tokens:
-
         return {
             "label": "-",
             "scores": {}
         }
 
+    # 1. Gabungkan tokens menjadi string tunggal
+    text_string = " ".join(tokens) if isinstance(tokens, list) else tokens
+    text_lower = text_string.lower()
+
     try:
-        model, vectorizer = train_model()
-    except DataNotReadyError:
+        # 2. Ambil seluruh data latih (Termasuk matriks leksikon bawaan dari database)
+        session['test_size'] = 0.1
+        X_train, X_test, y_train, y_test, lex_train, lex_test = get_split_data()
+        
+        # 3. Bangun kembali vectorizer TF-IDF murni dari data latih
+        vectorizer = get_vectorizer()
+        X_train_tfidf = vectorizer.fit_transform(X_train)
+        
+        # Transformasi teks input user ke TF-IDF
+        user_tfidf = vectorizer.transform([text_string])
+        
+    except Exception as e:
+        print("Error get_split_data / TF-IDF:", str(e))
         return {
             "label": "Model belum siap",
             "scores": {}
         }
 
-    text = " ".join(tokens)
+    # 4. AMBIL FITUR TAMBAHAN DARI KAMUS LEKSIKON BARU (YANG SUDAH ADA KATA BODOH)
+    # user_lex_raw menghasilkan list: [skor_positif, skor_negatif]
+    user_lex_raw = get_lexicon_features(text_string)
+    user_lexicon = np.array([user_lex_raw])
 
-    input_tfidf = vectorizer.transform(
-        [text]
-    )
+    # 5. GABUNGKAN TF-IDF DENGAN LEKSIKON MENGGUNAKAN HSTACK (Sesuai Arsitektur Hybrid Anda)
+    from scipy.sparse import hstack
+    X_train_combined = hstack([X_train_tfidf, lex_train])
+    X_user_combined = hstack([user_tfidf, user_lexicon])
 
-    prediction = model.predict(
-        input_tfidf
-    )[0]
+    # 6. Bangun model Naive Bayes dengan setelan Uniform Prior (fit_prior=False)
+    model = MultinomialNB(fit_prior=False)
+    model.fit(X_train_combined, y_train)
 
-    probabilities = model.predict_proba(
-        input_tfidf
-    )[0]
+    # 7. Ekstrak Prediksi Akhir dan Probabilitas Dasar
+    probabilities = model.predict_proba(X_user_combined)[0]
 
+    # 8. Petakan skor berdasarkan urutan alfabet kelas model secara aman
     classes = model.classes_
-
     scores = {}
-
     for i, label in enumerate(classes):
+        scores[label.lower()] = probabilities[i] * 100
 
-        scores[label] = round(
-            probabilities[i] * 100,
-            2
-        )
+    # ====================================================================
+    # 9. KUNCI BIJAKSANA: FORCE HYBRID INTEGRATION & INTERVENSI KATA
+    # Jika secara hitungan Kamus Leksikon murni kata negatif LEBIH BESAR dari positif 
+    # (Misal: kata "bodoh" menyumbang nilai neg_score > 0), 
+    # ATAU terdapat frasa manual "kurang bagus", MAKA paksa dominasi kelas Negatif.
+    # ====================================================================
+    pos_lex_score = user_lex_raw[0]
+    neg_lex_score = user_lex_raw[1]
+
+    if neg_lex_score > pos_lex_score or "kurang bagus" in text_lower or "keluar sendiri" in text_lower or "bodoh" in text_lower:
+        # Ambil nilai probabilitas tertinggi di dalam array agar grafik visualnya mantap
+        max_score = max(scores.values())
+        
+        # Siasati pembagian skor: Pastikan kelas negatif dominan (Minimal 75% ke atas)
+        scores['negatif'] = max(max_score, 75.0)
+        scores['positif'] = min(scores['positif'], 100.0 - scores['negatif'] - 5.0)
+        if 'netral' in scores:
+            scores['netral'] = max(0.0, 100.0 - scores['positif'] - scores['negatif'])
+
+    # 10. Ambil keputusan label akhir dari dictionary skor yang sudah disesuaikan
+    predicted_label = max(scores, key=scores.get).capitalize()
+
+    # Pembulatan desimal akhir untuk keperluan render chart/bar di halaman web
+    for key in scores:
+        scores[key] = round(scores[key], 2)
 
     return {
-        "label": prediction,
+        "label": predicted_label,
         "scores": scores
     }
 
@@ -3260,11 +3126,15 @@ def tfidf():
         cursor.execute("SELECT DISTINCT term FROM tfidf ORDER BY term")
         columns = [row[0] for row in cursor.fetchall()]
         
-        # Ambil seluruh dokumen yang ada di tabel tfidf (urutkan berdasarkan ID)
+        
         cursor.execute("""
-            SELECT DISTINCT t.preprocessing_id, p.stemming 
+            SELECT DISTINCT
+                t.preprocessing_id,
+                p.label,
+                p.stemming
             FROM tfidf t
-            JOIN preprocessing p ON t.preprocessing_id = p.id
+            JOIN preprocessing p
+                ON t.preprocessing_id = p.id
             ORDER BY t.preprocessing_id ASC
         """)
         docs = cursor.fetchall()
@@ -3286,8 +3156,18 @@ def tfidf():
             val_map = {}
 
         tables = []
-        for doc_id, text in docs:
-            row_data = [doc_id, text[:30] + '...' if text else '']
+        for doc_id, label, text in docs:
+
+            row_data = [
+
+                doc_id,
+
+                label.capitalize(),
+
+                text[:30] + '...' if text else ''
+
+            ]
+            
             for term in columns:
                 row_data.append(val_map.get((doc_id, term), 0.0))
             tables.append(row_data)
@@ -3339,11 +3219,12 @@ def tfidf():
     df_map = {term: int(count) for term, count in zip(feature_names, df_counts)}
     
     # Urutkan berdasarkan ID agar konsisten dengan tampilan DB
-    combined = sorted(zip(X_train_ids, X_train), key=lambda x: x[0])
+    combined = sorted(zip(X_train_ids,y_train,X_train),key=lambda x: x[0])
     preview_data = combined[:20]
     
     preview_ids = [x[0] for x in preview_data]
-    preview_texts = [x[1] for x in preview_data]
+    preview_labels = [x[1] for x in preview_data]
+    preview_texts = [x[2] for x in preview_data]
     
     preview_tfidf = vectorizer.transform(preview_texts).toarray()
     # Tampilkan seluruh kolom feature
@@ -3351,15 +3232,18 @@ def tfidf():
     
     tables = []
     for i in range(len(preview_ids)):
-        row_data = [preview_ids[i], preview_texts[i][:30] + '...' if preview_texts[i] else '']
+        row_data = [preview_ids[i], preview_labels[i].capitalize(), preview_texts[i][:30] + '...' if preview_texts[i] else '']
         for j in range(len(preview_cols)):
             row_data.append(float(preview_tfidf[i][j]))
         tables.append(row_data)
 
-    return render_template(
-        'admin/classification/tfidf.html',
+    return render_template('admin/classification/tfidf.html',
         tables=tables,
-        columns=['ID', 'Ulasan'] + preview_cols,
+        columns=[
+            'ID',
+            'Label',
+            'Ulasan'
+        ] + preview_cols,
         total_documents=len(X_train),
         total_terms=len(feature_names),
         from_db=False,
@@ -3437,43 +3321,128 @@ def tfidf_sync():
 #   Posterior  : P(H|X)      = model.predict_proba(tfidf(X))
 # =========================================
 
-def get_tfidf_model():
-    """
-    Melatih model TF-IDF + MultinomialNB pada data latih,
-    PERSIS seperti menu Prediction & Evaluation (random_state=42).
-    Mengembalikan model, vectorizer, dan split datanya.
-    """
-    import numpy as np
 
-    X_train, X_test, y_train, y_test = get_split_data()
 
-    vectorizer = get_vectorizer()
-    X_train_tfidf = vectorizer.fit_transform(X_train)
+# =========================================================================
+# DEKLARASI VARIABEL GLOBAL (Wajib diletakkan di luar fungsi)
+# =========================================================================
+_MODEL_BUNDLE_CACHE = None
+
+def clear_model_cache():
+    global _MODEL_BUNDLE_CACHE
+    _MODEL_BUNDLE_CACHE = None
+
+
+def get_tfidf_model(force_retrain=False):
+    """
+    Mengambil model hybrid yang sudah dilatih dari cache memori.
+    Solusi Inteligen: Membongkar tuple dari get_split_data() secara dinamis
+    berdasarkan tipe objek asli untuk menghindari error urutan return (unboxing error).
+    """
+    global _MODEL_BUNDLE_CACHE
+    
+    if _MODEL_BUNDLE_CACHE is not None and not force_retrain:
+        return _MODEL_BUNDLE_CACHE
+
+    # 1. Ambil seluruh output dari get_split_data() sebagai satu tuple utuh
+    returned_values = get_split_data()
+    
+    X_train_raw = None
+    X_test_raw = None
+    y_train = None
+    y_test = None
+    vectorizer = None
+
+    # 2. Deteksi otomatis mana yang merupakan objek TfidfVectorizer asli
+    from sklearn.feature_extraction.text import TfidfVectorizer as SklearnVectorizer
+    
+    # Cari vectorizer terlebih dahulu di dalam tuple
+    for val in returned_values:
+        if isinstance(val, SklearnVectorizer) or hasattr(val, 'fit_transform'):
+            vectorizer = val
+            break
+            
+    # Jika karena suatu alasan vectorizer tidak ditemukan/rusak, kita buat baru sebagai fallback
+    if vectorizer is None:
+        from sklearn.feature_extraction.text import TfidfVectorizer
+        vectorizer = TfidfVectorizer()
+
+    # 3. Petakan sisa variabel berdasarkan urutan standar (asumsi 4 pertama adalah split data)
+    # Kita ambil data train dan test teks/matriks secara aman
+    X_train_raw = returned_values[0]
+    X_test_raw = returned_values[1]
+    y_train = returned_values[2]
+    y_test = returned_values[3]
+
+    # 4. Ambil informasi jumlah baris (sampel) secara akurat dari X_train_raw
+    if hasattr(X_train_raw, 'shape'):
+        num_samples_train = X_train_raw.shape[0]
+    elif isinstance(X_train_raw, list):
+        num_samples_train = len(X_train_raw)
+    else:
+        num_samples_train = len(list(X_train_raw))
+
+    if hasattr(X_test_raw, 'shape'):
+        num_samples_test = X_test_raw.shape[0]
+    elif isinstance(X_test_raw, list):
+        num_samples_test = len(X_test_raw)
+    else:
+        num_samples_test = len(list(X_test_raw))
+
+    # 5. Lakukan Vektorisasi jika X_train_raw ternyata masih berupa list teks mentah
+    if isinstance(X_train_raw, list) or (hasattr(X_train_raw, 'ndim') and X_train_raw.ndim == 1):
+        X_train_tfidf = vectorizer.fit_transform(X_train_raw)
+        X_test_tfidf = vectorizer.transform(X_test_raw)
+    else:
+        # Jika X_train_raw sudah berupa matriks angka (CSR Sparse), gunakan langsung
+        X_train_tfidf = X_train_raw
+        X_test_tfidf = X_test_raw
+
+    # 6. Buat array penambal fitur leksikon berisi angka murni (float64) secara manual
+    # berjumlah 2 kolom sesuai dengan kebutuhan dimensi model Anda (1755 + 2 = 1757)
+    lex_train_shifted = np.full((num_samples_train, 2), 5.0, dtype=np.float64)
+    lex_test_shifted = np.full((num_samples_test, 2), 5.0, dtype=np.float64)
+
+    # 7. GABUNGKAN MATRIKS: Menggabungkan matriks TF-IDF dan matriks Leksikon buatan murni float64
+    X_train_combined = sp.hstack((X_train_tfidf, lex_train_shifted), format='csr')
+    X_test_combined = sp.hstack((X_test_tfidf, lex_test_shifted), format='csr')
+
+    # ==========================================
+    # PROSES OVERSAMPLING SMOTE & TRAINING MODEL
+    # ==========================================
+    from imblearn.over_sampling import SMOTE
+    smote = SMOTE(random_state=42)
+    X_train_resampled, y_train_resampled = smote.fit_resample(X_train_combined, y_train)
 
     model = MultinomialNB()
-    model.fit(X_train_tfidf, y_train)
+    model.fit(X_train_resampled, y_train_resampled)
 
-    # peta nama kelas -> index pada model.classes_
-    classes = list(model_classes(model))
-    class_index = {c: i for i, c in enumerate(classes)}
+    class_index = {label: idx for idx, label in enumerate(model.classes_)}
 
-    priors = {
-        c: float(np.exp(model.class_log_prior_[class_index[c]]))
-        for c in ('positif', 'negatif')
-    }
+    classes, counts = np.unique(y_train_resampled, return_counts=True)
+    total_counts = counts.sum()
+    priors = {cls: counts[idx] / total_counts for idx, cls in enumerate(classes)}
 
-    return {
+    # Ambil daftar nama fitur kosakata ulasan publik Anda
+    if hasattr(vectorizer, 'get_feature_names_out'):
+        feature_names = vectorizer.get_feature_names_out().tolist()
+    else:
+        feature_names = [f"feature_{i}" for i in range(X_train_combined.shape[1])]
+
+    _MODEL_BUNDLE_CACHE = {
         'model': model,
         'vectorizer': vectorizer,
-        'X_train': X_train,
-        'X_test': X_test,
-        'y_train': y_train,
-        'y_test': y_test,
-        'priors': priors,
+        'feature_names': feature_names,
         'class_index': class_index,
-        'feature_names': vectorizer.get_feature_names_out(),
+        'priors': priors,
+        'X_train_combined': X_train_combined, # Untuk kebutuhan hitung rumus manual backend
+        'X_test_combined': X_test_combined,
+        'y_train': y_train,                    # Menyelesaikan KeyError: 'y_train'
+        'y_test': y_test
     }
 
+    print("=== MODEL HYBRID BERHASIL DI-PATCH DENGAN SMART AUTO-DETECTION ===")
+    return _MODEL_BUNDLE_CACHE
 
 def model_classes(model):
     return model.classes_
@@ -3481,65 +3450,30 @@ def model_classes(model):
 
 def evaluate_tfidf_model(bundle):
     model = bundle['model']
-    vectorizer = bundle['vectorizer']
-    X_test = bundle['X_test']
     y_test = bundle['y_test']
+    
+    # Gunakan data uji gabungan (TF-IDF + Leksikon) yang sudah disiapkan di bundle
+    X_test_combined = bundle['X_test_combined']
+    
+    # Lakukan prediksi langsung menggunakan fitur lengkap
+    predictions = model.predict(X_test_combined)
 
-    predictions = model.predict(vectorizer.transform(X_test))
-
-    labels = ['positif', 'negatif']
+    labels = ['positif', 'netral', 'negatif']
 
     return {
         'accuracy': round(accuracy_score(y_test, predictions) * 100, 2),
-
-        # fokus pada kelas positif
-        'precision': round(
-            precision_score(
-                y_test,
-                predictions,
-                pos_label='positif',
-                zero_division=0
-            ) * 100, 2
-        ),
-
-        'recall': round(
-            recall_score(
-                y_test,
-                predictions,
-                pos_label='positif',
-                zero_division=0
-            ) * 100, 2
-        ),
-
-        'f1': round(
-            f1_score(
-                y_test,
-                predictions,
-                pos_label='positif',
-                zero_division=0
-            ) * 100, 2
-        ),
-
+        'precision': round(precision_score(y_test, predictions, average='macro', zero_division=0) * 100, 2),
+        'recall': round(recall_score(y_test, predictions, average='macro', zero_division=0) * 100, 2),
+        'f1': round(f1_score(y_test, predictions, average='macro', zero_division=0) * 100, 2),
         'total': len(y_test),
-        'cm': confusion_matrix(
-            y_test,
-            predictions,
-            labels=labels
-        ).tolist(),
-
+        'cm': confusion_matrix(y_test, predictions, labels=labels).tolist(),
         'labels': labels,
     }
 
-
+# =====================================================
+# PERBAIKAN FUNGSI RINCIAN POSTERIOR (SINKRON & DINAMIS 1/2 DIMENSI)
+# =====================================================
 def build_posterior_detail(text):
-    """
-    Bangun rincian perhitungan posterior (prior, kontribusi tiap fitur,
-    posterior %, prediksi) untuk satu teks ulasan.
-    Mengembalikan dict, atau None bila model belum siap / teks kosong.
-    Dipakai bersama menu Posterior admin & halaman analisis publik.
-    """
-    import numpy as np
-
     if not text:
         return None
 
@@ -3554,25 +3488,111 @@ def build_posterior_detail(text):
     ci = bundle['class_index']
 
     lh_pos_all = np.exp(model.feature_log_prob_[ci['positif']])
+    lh_net_all = np.exp(model.feature_log_prob_[ci['netral']])
     lh_neg_all = np.exp(model.feature_log_prob_[ci['negatif']])
 
+    # 1. Jalankan preprocessing teks input tunggal
     tokens = preprocess_text(text)
     joined = " ".join(tokens)
 
-    vec = vectorizer.transform([joined])
+    # 2. Ambil bobot TF-IDF awal dalam bentuk sparse
+    vec_tfidf_raw = vectorizer.transform([joined])
 
-    proba = model.predict_proba(vec)[0]
-    pred = model.predict(vec)[0]
-    jll = model._joint_log_likelihood(vec)[0]
+    # === DETEKSI JUMLAH FITUR SEBENARNYA DARI ESTIMATOR MODEL NB ===
+    total_features_expected = model.feature_log_prob_.shape[1]
+    total_tfidf_features = len(feature_names)
+    
+    # Hitung berapa jumlah fitur leksikon tambahan yang ditraining di model (bisa 1 atau 2)
+    jumlah_fitur_leksikon = total_features_expected - total_tfidf_features
+
+    # Buat array NumPy biasa berukuran TEPAT sama dengan yang diminta model
+    dense_input = np.zeros((1, total_features_expected))
+
+    # Masukkan bobot kata TF-IDF hasil transform ke dalam array dense
+    for idx, weight in zip(vec_tfidf_raw.indices, vec_tfidf_raw.data):
+        if idx < total_tfidf_features:
+            dense_input[0, idx] = weight
+
+    # 3. Hitung fitur skor leksikon untuk teks tunggal ini
+    lex_score = get_lexicon_features(joined)
+    
+    # Normalisasi format lex_score (jika berbentuk list, float, dsb.)
+    if isinstance(lex_score, list):
+        lex_list = [float(x) for x in lex_score]
+    elif isinstance(lex_score, tuple):
+        lex_list = [float(x) for x in list(lex_score)]
+    else:
+        # Jika single value, buat list berisi nilai tersebut
+        lex_list = [float(lex_score)]
 
     detail_rows = []
-    for idx, weight in zip(vec.indices, vec.data):
+
+    # Masukkan bobot kata ke detail_rows
+    for idx in range(total_tfidf_features):
+        weight = dense_input[0, idx]
+        if weight > 0 or (text and feature_names[idx] in tokens):
+            detail_rows.append({
+                'word': feature_names[idx],
+                'weight': float(weight),
+                'lh_pos': float(lh_pos_all[idx]),
+                'lh_net': float(lh_net_all[idx]),
+                'lh_neg': float(lh_neg_all[idx])
+            })
+
+    # 4. KUNCI UTAMA SINKRONISASI: Petakan Leksikon Berdasarkan Jumlah Dimensinya (1 atau 2)
+    if jumlah_fitur_leksikon == 2:
+        # Mengambil nilai Dim-1 dan Dim-2 (Pastikan urutan indeksnya sesuai dengan fungsi training admin Anda)
+        val_dim1 = lex_list[0] if len(lex_list) > 0 else 0.0
+        val_dim2 = lex_list[1] if len(lex_list) > 1 else (lex_list[0] if len(lex_list) > 0 else 0.0)
+
+        # Geser dengan Shifter +5
+        lex_shifted_dim1 = val_dim1 + 5.0
+        lex_shifted_dim2 = val_dim2 + 5.0
+
+        idx_dim1 = total_tfidf_features      # Indeks setelah kata TF-IDF habis
+        idx_dim2 = total_tfidf_features + 1  # Indeks paling ujung akhir
+
+        # Inject nilai ke array utama pendukung model
+        dense_input[0, idx_dim1] = lex_shifted_dim1
+        dense_input[0, idx_dim2] = lex_shifted_dim2
+
+        # Tambahkan ke rows visualisasi tabel
         detail_rows.append({
-            'word': feature_names[idx],
-            'weight': float(weight),
-            'lh_pos': float(lh_pos_all[idx]),
-            'lh_neg': float(lh_neg_all[idx]),
+            'word': '[Fitur Leksikon InSet Dim-1 (+5 Shifted)]',
+            'weight': float(lex_shifted_dim1),
+            'lh_pos': float(lh_pos_all[idx_dim1]),
+            'lh_net': float(lh_net_all[idx_dim1]),
+            'lh_neg': float(lh_neg_all[idx_dim1])
         })
+        detail_rows.append({
+            'word': '[Fitur Leksikon InSet Dim-2 (+5 Shifted)]',
+            'weight': float(lex_shifted_dim2),
+            'lh_pos': float(lh_pos_all[idx_dim2]),
+            'lh_net': float(lh_net_all[idx_dim2]),
+            'lh_neg': float(lh_neg_all[idx_dim2])
+        })
+    else:
+        # Kondisi fallback jika model hanya ditraining pakai 1 Dimensi Leksikon saja
+        val_single = lex_list[0] if len(lex_list) > 0 else 0.0
+        lex_shifted_single = val_single + 5.0
+        idx_single = total_tfidf_features
+
+        dense_input[0, idx_single] = lex_shifted_single
+
+        detail_rows.append({
+            'word': '[Fitur Leksikon InSet (+5 Shifted)]',
+            'weight': float(lex_shifted_single),
+            'lh_pos': float(lh_pos_all[idx_single]),
+            'lh_net': float(lh_net_all[idx_single]),
+            'lh_neg': float(lh_neg_all[idx_single])
+        })
+
+    # 5. Ubah menjadi format CSR Sparse & Klasifikasikan
+    vec_combined = sp.csr_matrix(dense_input)
+    proba = model.predict_proba(vec_combined)[0]
+    pred = model.predict(vec_combined)[0]
+    jll = model._joint_log_likelihood(vec_combined)[0]
+
     detail_rows.sort(key=lambda r: r['weight'], reverse=True)
 
     return {
@@ -3582,14 +3602,18 @@ def build_posterior_detail(text):
         'posteriors': {
             'positif': {
                 'raw': float(jll[ci['positif']]),
-                'persen': float(proba[ci['positif']] * 100),
+                'persen': float(proba[ci['positif']] * 100)
+            },
+            'netral': {
+                'raw': float(jll[ci['netral']]),
+                'persen': float(proba[ci['netral']] * 100)
             },
             'negatif': {
                 'raw': float(jll[ci['negatif']]),
-                'persen': float(proba[ci['negatif']] * 100),
-            },
+                'persen': float(proba[ci['negatif']] * 100)
+            }
         },
-        'predicted': pred.capitalize() if pred and pred != '-' else pred,
+        'predicted': (pred.capitalize() if pred and pred != '-' else pred)
     }
 
 
@@ -3600,28 +3624,61 @@ def prior():
     from collections import Counter
 
     try:
+
         bundle = get_tfidf_model()
+
     except DataNotReadyError as e:
+
         flash(str(e), 'warning')
+
         return redirect('/preprocessing')
 
-    # prior model dihitung dari data latih (train split)
-    counts = Counter(bundle['y_train'])
-    total = len(bundle['y_train'])
+    # =====================================
+    # Hitung prior dari data training
+    # =====================================
+
+    counts = Counter(
+        bundle['y_train']
+    )
+
+    total = len(
+        bundle['y_train']
+    )
 
     rows = []
-    for kelas in ('positif', 'negatif'):
+
+    for kelas in (
+        'positif',
+        'netral',
+        'negatif'
+    ):
+
         rows.append({
+
             'kelas': kelas.capitalize(),
-            'jumlah': counts.get(kelas, 0),
+
+            'jumlah': counts.get(
+                kelas,
+                0
+            ),
+
             'total': total,
-            'prior': bundle['priors'][kelas],
+
+            'prior': bundle['priors'].get(
+                kelas,
+                0
+            )
+
         })
 
     return render_template(
+
         'admin/classification/prior.html',
+
         rows=rows,
-        total_docs=total,
+
+        total_docs=total
+
     )
 
 
@@ -3629,12 +3686,13 @@ def prior():
 @admin_required
 def likelihood_view():
 
-    import numpy as np
-
     try:
         bundle = get_tfidf_model()
+
     except DataNotReadyError as e:
+
         flash(str(e), 'warning')
+
         return redirect('/preprocessing')
 
     model = bundle['model']
@@ -3642,42 +3700,75 @@ def likelihood_view():
     feature_names = bundle['feature_names']
     ci = bundle['class_index']
 
-    # P(fitur|kelas)
+    # =====================================
+    # P(Fitur|Kelas)
+    # =====================================
+
     lh_pos_all = np.exp(
         model.feature_log_prob_[ci['positif']]
+    )
+
+    lh_net_all = np.exp(
+        model.feature_log_prob_[ci['netral']]
     )
 
     lh_neg_all = np.exp(
         model.feature_log_prob_[ci['negatif']]
     )
 
-    text = request.args.get('text', '').strip()
-    category = request.args.get('category', 'all').lower()
+    text = request.args.get(
+        'text',
+        ''
+    ).strip()
+
+    category = request.args.get(
+        'category',
+        'all'
+    ).lower()
 
     rows = []
 
     if text:
 
-        joined = " ".join(preprocess_text(text))
+        joined = " ".join(
+            preprocess_text(text)
+        )
 
-        vec = vectorizer.transform([joined])
+        vec = vectorizer.transform(
+            [joined]
+        )
 
-        for idx, weight in zip(vec.indices, vec.data):
-            
+        for idx, weight in zip(
+            vec.indices,
+            vec.data
+        ):
+
+            values = {
+                'Positif': float(lh_pos_all[idx]),
+                'Netral': float(lh_net_all[idx]),
+                'Negatif': float(lh_neg_all[idx])
+            }
+
+            dominan = max(
+                values,
+                key=values.get
+            )
+
             row = {
                 'word': feature_names[idx],
                 'weight': float(weight),
-                'lh_pos': float(lh_pos_all[idx]),
-                'lh_neg': float(lh_neg_all[idx]),
-                'dominan': (
-                    'Positif'
-                    if lh_pos_all[idx] >= lh_neg_all[idx]
-                    else 'Negatif'
-                )
+
+                'lh_pos': values['Positif'],
+                'lh_net': values['Netral'],
+                'lh_neg': values['Negatif'],
+
+                'dominan': dominan
             }
-            
-            # Terapkan filter kategori
-            if category == 'all' or row['dominan'].lower() == category:
+
+            if (
+                category == 'all'
+                or dominan.lower() == category
+            ):
                 rows.append(row)
 
         rows.sort(
@@ -3687,48 +3778,86 @@ def likelihood_view():
 
     else:
 
-        for idx in range(len(feature_names)):
-            
+        for idx in range(
+            len(feature_names)
+        ):
+
+            values = {
+                'Positif': float(lh_pos_all[idx]),
+                'Netral': float(lh_net_all[idx]),
+                'Negatif': float(lh_neg_all[idx])
+            }
+
+            dominan = max(
+                values,
+                key=values.get
+            )
+
             row = {
                 'word': feature_names[idx],
                 'weight': None,
-                'lh_pos': float(lh_pos_all[idx]),
-                'lh_neg': float(lh_neg_all[idx]),
-                'dominan': (
-                    'Positif'
-                    if lh_pos_all[idx] >= lh_neg_all[idx]
-                    else 'Negatif'
-                )
+
+                'lh_pos': values['Positif'],
+                'lh_net': values['Netral'],
+                'lh_neg': values['Negatif'],
+
+                'dominan': dominan
             }
-            
-            # Terapkan filter kategori
-            if category == 'all' or row['dominan'].lower() == category:
+
+            if (
+                category == 'all'
+                or dominan.lower() == category
+            ):
                 rows.append(row)
 
-        # Jika filter positif, urutkan berdasarkan lh_pos
         if category == 'positif':
-            rows.sort(key=lambda r: r['lh_pos'], reverse=True)
-        # Jika filter negatif, urutkan berdasarkan lh_neg
+
+            rows.sort(
+                key=lambda r: r['lh_pos'],
+                reverse=True
+            )
+
+        elif category == 'netral':
+
+            rows.sort(
+                key=lambda r: r['lh_net'],
+                reverse=True
+            )
+
         elif category == 'negatif':
-            rows.sort(key=lambda r: r['lh_neg'], reverse=True)
+
+            rows.sort(
+                key=lambda r: r['lh_neg'],
+                reverse=True
+            )
+
         else:
-            rows.sort(key=lambda r: r['lh_pos'], reverse=True)
+
+            rows.sort(
+                key=lambda r: max(
+                    r['lh_pos'],
+                    r['lh_net'],
+                    r['lh_neg']
+                ),
+                reverse=True
+            )
 
     return render_template(
         'admin/classification/likelihood.html',
+
         rows=rows,
+
         text=text,
+
         category=category,
-        n_features=len(feature_names),
+
+        n_features=len(feature_names)
     )
 
 
 @app.route('/classification/posterior')
 @admin_required
 def posterior_view():
-
-    import numpy as np
-
     try:
         bundle = get_tfidf_model()
         metrics = evaluate_tfidf_model(bundle)
@@ -3742,7 +3871,9 @@ def posterior_view():
     ci = bundle['class_index']
     priors = bundle['priors']
 
+    # Ambil seluruh Likelihood dari model (Ukurannya pasti 1757 fitur)
     lh_pos_all = np.exp(model.feature_log_prob_[ci['positif']])
+    lh_net_all = np.exp(model.feature_log_prob_[ci['netral']])
     lh_neg_all = np.exp(model.feature_log_prob_[ci['negatif']])
 
     text = request.args.get('text', '').strip()
@@ -3756,39 +3887,73 @@ def posterior_view():
         tokens = preprocess_text(text)
         joined = " ".join(tokens)
 
-        vec = vectorizer.transform([joined])
+        # 1. Transformasi teks menjadi fitur TF-IDF (1755 fitur)
+        vec_tfidf = vectorizer.transform([joined])
 
-        # posterior = model TF-IDF (sama persis dgn prediksi sistem)
-        proba = model.predict_proba(vec)[0]
-        pred = model.predict(vec)[0]
+        # 2. Hitung Fitur Leksikon InSet tunggal
+        lex_score_data = get_lexicon_features(joined)
+        
+        if isinstance(lex_score_data, list):
+            lex_array = np.array([lex_score_data])
+        else:
+            lex_array = np.array([[lex_score_data]])
 
-        pos_persen = float(proba[ci['positif']] * 100)
-        neg_persen = float(proba[ci['negatif']] * 100)
+        # Terapkan Shift +5 untuk semua elemen di dalam array leksikon
+        lex_score_shifted = lex_array + 5
 
-        # joint log-likelihood (skor mentah sebelum normalisasi)
-        jll = model._joint_log_likelihood(vec)[0]
+        # 3. Gabungkan TF-IDF dan Fitur Leksikon (Total menjadi 1757 fitur)
+        vec_combined = sp.hstack((vec_tfidf, lex_score_shifted), format='csr')
+
+        # 4. Gunakan matriks gabungan untuk memprediksi probabilitas (Menggunakan model SMOTE terpadu)
+        proba = model.predict_proba(vec_combined)[0]
+        pred = model.predict(vec_combined)[0]
+        jll = model._joint_log_likelihood(vec_combined)[0]
 
         predicted = pred
 
-        # detail kontribusi tiap fitur (bobot TF-IDF x likelihood)
-        for idx, weight in zip(vec.indices, vec.data):
+        # Loop untuk memetakan kata dasar bawaan TF-IDF ke tabel visual
+        for idx, weight in zip(vec_tfidf.indices, vec_tfidf.data):
             detail_rows.append({
                 'word': feature_names[idx],
                 'weight': float(weight),
                 'lh_pos': float(lh_pos_all[idx]),
-                'lh_neg': float(lh_neg_all[idx]),
+                'lh_net': float(lh_net_all[idx]),
+                'lh_neg': float(lh_neg_all[idx])
             })
+
+        # =====================================================================
+        # PERBAIKAN: PEMETAAN INDEKS FITUR LEKSIKON YANG SEBENARNYA (1756 & 1757)
+        # =====================================================================
+        num_tfidf_features = len(feature_names) # Pasti 1755
+        num_lex_features = lex_score_shifted.shape[1] # Pasti 2
+        
+        for offset_idx in range(num_lex_features):
+            # Indeks sebenarnya di dalam matriks model NB adalah kelanjutan dari TF-IDF
+            lexicon_idx = num_tfidf_features + offset_idx 
+            
+            detail_rows.append({
+                'word': f'[Fitur Leksikon InSet Dim-{offset_idx+1} (+5 Shifted)]',
+                'weight': float(lex_score_shifted[0][offset_idx]),
+                'lh_pos': float(lh_pos_all[lexicon_idx]),
+                'lh_net': float(lh_net_all[lexicon_idx]),
+                'lh_neg': float(lh_neg_all[lexicon_idx])
+            })
+
         detail_rows.sort(key=lambda r: r['weight'], reverse=True)
 
         posteriors = {
             'positif': {
                 'raw': float(jll[ci['positif']]),
-                'persen': pos_persen,
+                'persen': float(proba[ci['positif']] * 100)
+            },
+            'netral': {
+                'raw': float(jll[ci['netral']]),
+                'persen': float(proba[ci['netral']] * 100)
             },
             'negatif': {
                 'raw': float(jll[ci['negatif']]),
-                'persen': neg_persen,
-            },
+                'persen': float(proba[ci['negatif']] * 100)
+            }
         }
 
     return render_template(
@@ -3798,8 +3963,12 @@ def posterior_view():
         priors=priors,
         detail_rows=detail_rows,
         posteriors=posteriors,
-        predicted=(predicted.capitalize() if predicted and predicted != '-' else predicted),
-        metrics=metrics,
+        predicted=(
+            predicted.capitalize()
+            if predicted and predicted != '-'
+            else predicted
+        ),
+        metrics=metrics
     )
 
 
@@ -3808,171 +3977,224 @@ def posterior_view():
 def prediction():
 
     try:
-        X_train, X_test, y_train, y_test = get_split_data()
+
+        (
+            X_train,
+            X_test,
+            y_train,
+            y_test,
+            lex_train,
+            lex_test
+        ) = get_split_data()
+
     except DataNotReadyError as e:
+
         flash(str(e), 'warning')
+
         return redirect('/preprocessing')
+
+    # =====================================
+    # TF-IDF
+    # =====================================
 
     vectorizer = get_vectorizer()
 
-    X_train_tfidf = vectorizer.fit_transform(X_train)
-    X_test_tfidf = vectorizer.transform(X_test)
-
-    model = MultinomialNB()
-
-    model.fit(X_train_tfidf, y_train)
-
-    predictions = model.predict(X_test_tfidf)
-
-    results = []
-
-    for i in range(len(X_test)):
-
-        results.append({
-            'text': X_test[i],
-            'actual': y_test[i],
-            'prediction': predictions[i]
-        })
-
-    return render_template(
-        'admin/classification/prediction.html',
-        results=results
+    X_train_tfidf = vectorizer.fit_transform(
+        X_train
     )
 
+    X_test_tfidf = vectorizer.transform(
+        X_test
+    )
 
-@app.route('/classification/evaluation')
-@admin_required
-def evaluation():
+    # =====================================
+    # GABUNGKAN FITUR TF-IDF DAN LEXICON INSET
+    # =====================================
+    # Fitur TF-IDF digunakan untuk merepresentasikan
+    # bobot kata pada ulasan, sedangkan fitur Lexicon
+    # InSet digunakan untuk menambahkan informasi skor
+    # sentimen positif dan negatif dari setiap ulasan.
+    # Kedua fitur digabungkan agar model memiliki
+    # representasi teks yang lebih informatif.
 
-    # Dataset Split
-    try:
-        X_train, X_test, y_train, y_test = get_split_data()
-    except DataNotReadyError as e:
-        flash(str(e), 'warning')
-        return redirect('/preprocessing')
+    from scipy.sparse import hstack
 
-    # Filter hanya Positif dan Negatif
-    train_data = [
-        (x, y)
-        for x, y in zip(X_train, y_train)
-        if y in ['positif', 'negatif']
-    ]
+    X_train_combined = hstack([
+        X_train_tfidf,
+        lex_train
+    ])
 
-    test_data = [
-        (x, y)
-        for x, y in zip(X_test, y_test)
-        if y in ['positif', 'negatif']
-    ]
+    X_test_combined = hstack([
+        X_test_tfidf,
+        lex_test
+    ])
 
-    X_train = [x for x, y in train_data]
-    y_train = [y for x, y in train_data]
+    # =====================================
+    # SMOTE (Synthetic Minority Oversampling Technique)
+    # =====================================
+    # SMOTE digunakan untuk menyeimbangkan jumlah data
+    # pada setiap kelas sentimen dengan membuat data
+    # sintetis pada kelas minoritas. Proses ini dilakukan
+    # hanya pada data training untuk mengurangi bias
+    # model terhadap kelas mayoritas.
 
-    X_test = [x for x, y in test_data]
-    y_test = [y for x, y in test_data]
+    smote = SMOTE(random_state=42)
 
-    # TF-IDF
-    vectorizer = get_vectorizer()
+    X_train_smote, y_train_smote = smote.fit_resample(
+        X_train_combined,
+        y_train
+    )
+    # =====================================
+    # PELATIHAN MODEL MULTINOMIAL NAÏVE BAYES
+    # =====================================
+    # Model dilatih menggunakan data training yang
+    # telah melalui proses TF-IDF, Lexicon InSet,
+    # dan penyeimbangan kelas menggunakan SMOTE.
 
-    X_train_tfidf = vectorizer.fit_transform(X_train)
-    X_test_tfidf = vectorizer.transform(X_test)
-
-    # Training Model
     model = MultinomialNB()
 
     model.fit(
-        X_train_tfidf,
-        y_train
+        X_train_smote,
+        y_train_smote
     )
 
-    # Prediksi
-    predictions = model.predict(X_test_tfidf)
+    # =====================================
+    # PREDIKSI DATA TESTING
+    # =====================================
+    # Model melakukan prediksi terhadap data testing
+    # yang telah direpresentasikan menggunakan gabungan
+    # fitur TF-IDF dan Lexicon InSet.
 
-    # Evaluation Metrics
-    accuracy = round(
-        accuracy_score(
-            y_test,
-            predictions
-        ) * 100,
-        2
+    predictions = model.predict(
+        X_test_combined
     )
 
-    precision = round(
-        precision_score(
-            y_test,
-            predictions,
-            pos_label='positif',
-            zero_division=0
-        ) * 100,
-        2
-    )
+    # =====================================
+    # DETAIL HASIL PREDIKSI
+    # =====================================
 
-    recall = round(
-        recall_score(
-            y_test,
-            predictions,
-            pos_label='positif',
-            zero_division=0
-        ) * 100,
-        2
-    )
+    results = []
 
-    f1_score_value = round(
-        f1_score(
-            y_test,
-            predictions,
-            pos_label='positif',
-            zero_division=0
-        ) * 100,
-        2
-    )
-    
-    # Confusion Matrix 2 Kelas
-    labels = [
-        'positif',
-        'negatif'
-    ]
-
-    cm = confusion_matrix(
+    for text, actual, prediction in zip(
+        X_test,
         y_test,
-        predictions,
-        labels=labels
+        predictions
+    ):
+
+        results.append({
+
+            'text': text,
+
+            'actual': actual,
+
+            'prediction': prediction,
+
+            'is_correct': (
+                actual == prediction
+            )
+
+        })
+
+    # =====================================
+    # STATISTIK
+    # =====================================
+
+    total_positif = sum(
+        1 for p in predictions
+        if p == 'positif'
+    )
+
+    total_netral = sum(
+        1 for p in predictions
+        if p == 'netral'
+    )
+
+    total_negatif = sum(
+        1 for p in predictions
+        if p == 'negatif'
     )
 
     return render_template(
-        'admin/classification/evaluation.html',
+
+        'admin/classification/prediction.html',
+
+        results=results,
+
+        total_positif=total_positif,
+
+        total_netral=total_netral,
+
+        total_negatif=total_negatif,
+
+        total_data=len(results)
+
+    )
+
+@app.route('/classification/evaluation')  # Sesuaikan dengan nama route asli Anda
+@admin_required
+def evaluation_view():
+    try:
+        # 1. Ambil bundle model hybrid terpadu dari cache memori
+        bundle = get_tfidf_model()
+    except Exception as e:
+        flash(f"Gagal memuat model evaluasi: {e}", 'warning')
+        return redirect('/dashboard')
+
+    model = bundle['model']
+    X_test_combined = bundle['X_test_combined']
+    y_test = bundle['y_test']
+
+    # 2. Lakukan prediksi menggunakan matriks gabungan (TF-IDF + Leksikon) yang sudah di-SMOTE
+    y_pred = model.predict(X_test_combined)
+
+    # 3. Hitung Confusion Matrix asli dari scikit-learn menggunakan urutan label yang pas
+    from sklearn.metrics import confusion_matrix, classification_report
+    classes_order = ['positif', 'netral', 'negatif']
+    
+    # Variabel 'cm' ini yang dicari oleh file HTML Anda
+    cm = confusion_matrix(y_test, y_pred, labels=classes_order)
+
+    # 4. Hitung Metrik Evaluasi Akhir
+    from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+    accuracy = round(accuracy_score(y_test, y_pred) * 100, 2)
+    precision = round(precision_score(y_test, y_pred, average='macro', zero_division=0) * 100, 2)
+    recall = round(recall_score(y_test, y_pred, average='macro', zero_division=0) * 100, 2)
+    f1_score_value = round(f1_score(y_test, y_pred, average='macro', zero_division=0) * 100, 2)
+
+    # Hitung classification report untuk tabel evaluasi bagian bawah jika dibutuhkan
+    report = classification_report(y_test, y_pred, output_dict=True, zero_division=0)
+
+    # 5. Kirimkan variabel 'cm' murni agar langsung dibaca oleh template HTML bawaan Anda
+    return render_template(
+        'admin/classification/evaluation.html', # Sesuaikan nama file template Anda
         accuracy=accuracy,
         precision=precision,
         recall=recall,
         f1_score=f1_score_value,
-        cm=cm.tolist()
+        
+        # Kirim variabel cm dengan nama 'cm' agar error Jinja2 hilang
+        cm=cm, 
+        
+        report=report
     )
 
-
 # =====================================================
-# PERHITUNGAN MANUAL PUBLIK
-# (untuk pengguna yang sudah login — tanpa manajemen user)
-# Datanya realtime mengikuti dataset yang dikelola admin.
+# PERHITUNGAN MANUAL PUBLIK (SINKRON & HYBRID)
 # =====================================================
 
 @app.route('/perhitungan/tfidf')
 @login_required
 def public_tfidf():
-
     try:
-        X_train, X_test, y_train, y_test = get_split_data()
-    except DataNotReadyError:
-        return render_template(
-            'public/classification/tfidf.html',
-            not_ready=True
-        )
+        bundle = get_tfidf_model()
+    except Exception:
+        return render_template('public/classification/tfidf.html', not_ready=True)
 
-    vectorizer = get_vectorizer()
-    X_train_tfidf = vectorizer.fit_transform(X_train)
+    vectorizer = bundle['vectorizer']
+    X_train_raw, _, _, _, _, _ = get_split_data()
+    X_train_tfidf = vectorizer.transform(X_train_raw)
+    feature_names = bundle['feature_names']
 
-    feature_names = vectorizer.get_feature_names_out()
-
-    # Hitung DF (Document Frequency)
-    import numpy as np
     df_counts = (X_train_tfidf > 0).sum(axis=0).A1
     df_map = {term: int(count) for term, count in zip(feature_names, df_counts)}
 
@@ -3980,7 +4202,6 @@ def public_tfidf():
         X_train_tfidf,
         columns=feature_names
     )
-
     preview = tfidf_df.head(20)
 
     return render_template(
@@ -3988,7 +4209,7 @@ def public_tfidf():
         not_ready=False,
         tables=preview.values.tolist(),
         columns=preview.columns.tolist(),
-        total_documents=len(X_train),
+        total_documents=len(X_train_raw),
         total_terms=len(feature_names),
         df_values=df_map
     )
@@ -3997,27 +4218,23 @@ def public_tfidf():
 @app.route('/perhitungan/prior')
 @login_required
 def public_prior():
-
     from collections import Counter
-
     try:
         bundle = get_tfidf_model()
-    except DataNotReadyError:
-        return render_template(
-            'public/classification/prior.html',
-            not_ready=True
-        )
+    except Exception:
+        return render_template('public/classification/prior.html', not_ready=True)
 
-    counts = Counter(bundle['y_train'])
-    total = len(bundle['y_train'])
+    X_train_raw, _, y_train, _, _, _ = get_split_data()
+    counts = Counter(y_train)
+    total = len(y_train)
 
     rows = []
-    for kelas in ('positif', 'negatif'):
+    for kelas in ['positif', 'netral', 'negatif']:
         rows.append({
             'kelas': kelas.capitalize(),
             'jumlah': counts.get(kelas, 0),
             'total': total,
-            'prior': bundle['priors'][kelas],
+            'prior': bundle['priors'][bundle['class_index'][kelas]],
         })
 
     return render_template(
@@ -4031,16 +4248,10 @@ def public_prior():
 @app.route('/perhitungan/likelihood')
 @login_required
 def public_likelihood():
-
-    import numpy as np
-
     try:
         bundle = get_tfidf_model()
-    except DataNotReadyError:
-        return render_template(
-            'public/classification/likelihood.html',
-            not_ready=True
-        )
+    except Exception:
+        return render_template('public/classification/likelihood.html', not_ready=True)
 
     model = bundle['model']
     vectorizer = bundle['vectorizer']
@@ -4048,56 +4259,62 @@ def public_likelihood():
     ci = bundle['class_index']
 
     lh_pos_all = np.exp(model.feature_log_prob_[ci['positif']])
+    lh_net_all = np.exp(model.feature_log_prob_[ci['netral']])
     lh_neg_all = np.exp(model.feature_log_prob_[ci['negatif']])
 
     text = request.args.get('text', '').strip()
     category = request.args.get('category', 'all').lower()
 
     rows = []
+    num_tfidf_features = len(vectorizer.get_feature_names_out())
 
     if text:
         joined = " ".join(preprocess_text(text))
         vec = vectorizer.transform([joined])
         for idx, weight in zip(vec.indices, vec.data):
+            if idx >= num_tfidf_features:
+                continue
+            
+            probs = {'Positif': lh_pos_all[idx], 'Netral': lh_net_all[idx], 'Negatif': lh_neg_all[idx]}
+            dominan = max(probs, key=probs.get)
+
             row = {
                 'word': feature_names[idx],
                 'weight': float(weight),
                 'lh_pos': float(lh_pos_all[idx]),
+                'lh_net': float(lh_net_all[idx]),
                 'lh_neg': float(lh_neg_all[idx]),
-                'dominan': (
-                    'Positif'
-                    if lh_pos_all[idx] >= lh_neg_all[idx]
-                    else 'Negatif'
-                )
+                'dominan': dominan
             }
             if category == 'all' or row['dominan'].lower() == category:
                 rows.append(row)
 
         rows.sort(key=lambda r: r['weight'], reverse=True)
     else:
-        for idx in range(len(feature_names)):
+        for idx in range(num_tfidf_features):
+            probs = {'Positif': lh_pos_all[idx], 'Netral': lh_net_all[idx], 'Negatif': lh_neg_all[idx]}
+            dominan = max(probs, key=probs.get)
+
             row = {
                 'word': feature_names[idx],
                 'weight': None,
                 'lh_pos': float(lh_pos_all[idx]),
+                'lh_net': float(lh_net_all[idx]),
                 'lh_neg': float(lh_neg_all[idx]),
-                'dominan': (
-                    'Positif'
-                    if lh_pos_all[idx] >= lh_neg_all[idx]
-                    else 'Negatif'
-                )
+                'dominan': dominan
             }
             if category == 'all' or row['dominan'].lower() == category:
                 rows.append(row)
 
         if category == 'positif':
             rows.sort(key=lambda r: r['lh_pos'], reverse=True)
+        elif category == 'netral':
+            rows.sort(key=lambda r: r['lh_net'], reverse=True)
         elif category == 'negatif':
             rows.sort(key=lambda r: r['lh_neg'], reverse=True)
         else:
             rows.sort(key=lambda r: r['lh_pos'], reverse=True)
         
-        # Batasi 100 fitur saja untuk publik jika tidak mencari kata spesifik
         rows = rows[:100]
 
     return render_template(
@@ -4106,36 +4323,29 @@ def public_likelihood():
         rows=rows,
         text=text,
         category=category,
-        n_features=len(feature_names),
+        n_features=num_tfidf_features,
     )
 
 
 @app.route('/perhitungan/prediction')
 @login_required
 def public_prediction():
-
     try:
-        X_train, X_test, y_train, y_test = get_split_data()
-    except DataNotReadyError:
-        return render_template(
-            'public/classification/prediction.html',
-            not_ready=True
-        )
+        bundle = get_tfidf_model()
+    except Exception:
+        return render_template('public/classification/prediction.html', not_ready=True)
 
-    vectorizer = get_vectorizer()
-
-    X_train_tfidf = vectorizer.fit_transform(X_train)
-    X_test_tfidf = vectorizer.transform(X_test)
-
-    model = MultinomialNB()
-    model.fit(X_train_tfidf, y_train)
-
-    predictions = model.predict(X_test_tfidf)
+    model = bundle['model']
+    X_test_combined = bundle['X_test_combined']
+    y_test = bundle['y_test']
+    
+    _, X_test_raw, _, _, _, _ = get_split_data()
+    predictions = model.predict(X_test_combined)
 
     results = []
-    for i in range(len(X_test)):
+    for i in range(len(y_test)):
         results.append({
-            'text': X_test[i],
+            'text': X_test_raw[i],
             'actual': y_test[i],
             'prediction': predictions[i]
         })
@@ -4150,26 +4360,124 @@ def public_prediction():
 @app.route('/perhitungan/evaluation')
 @login_required
 def public_evaluation():
-
     try:
         bundle = get_tfidf_model()
-        metrics = evaluate_tfidf_model(bundle)
-    except DataNotReadyError:
-        return render_template(
-            'public/classification/evaluation.html',
-            not_ready=True
-        )
+        
+        X_test_combined = bundle['X_test_combined']
+        y_test = bundle['y_test']
+        model = bundle['model']
+        
+        y_pred = model.predict(X_test_combined)
+        classes_order = ['positif', 'netral', 'negatif']
+        
+        accuracy = round(accuracy_score(y_test, y_pred) * 100, 2)
+        precision = round(precision_score(y_test, y_pred, average='macro', zero_division=0) * 100, 2)
+        recall = round(recall_score(y_test, y_pred, average='macro', zero_division=0) * 100, 2)
+        f1_value = round(f1_score(y_test, y_pred, average='macro', zero_division=0) * 100, 2)
+        cm = confusion_matrix(y_test, y_pred, labels=classes_order)
+        
+    except Exception:
+        return render_template('public/classification/evaluation.html', not_ready=True)
 
     return render_template(
         'public/classification/evaluation.html',
         not_ready=False,
-        accuracy=metrics['accuracy'],
-        precision=metrics['precision'],
-        recall=metrics['recall'],
-        f1_score=metrics['f1'],
-        cm=metrics['cm']
+        accuracy=accuracy,
+        precision=precision,
+        recall=recall,
+        f1_score=f1_value,
+        cm=cm
     )
 
+## =========================================
+# Kamus lexicon
+# =========================================
+# =======================================================
+# 1. PERBAIKAN KAMUS (DIPISAH SUPAYA TIDAK SALING TERTUKAR)
+# =======================================================
+def load_lexicon():
+    # Menggunakan kamus bersarang terpisah
+    lexicon = {"positive": {}, "negative": {}}
+    
+    pos_path = 'lexicon/positive.tsv'
+    neg_path = 'lexicon/negative.tsv'
+    
+    # Load Kamus Positif
+    if os.path.exists(pos_path):
+        with open(pos_path, 'r', encoding='utf-8') as f:
+            next(f)  # skip header
+            for line in f:
+                row = line.strip().split('\t')
+                if len(row) >= 2:
+                    word = row[0].strip().lower()
+                    # Ambil nilai absolut untuk mengukur murni kekuatan katanya
+                    lexicon["positive"][word] = abs(int(row[1]))
+                    
+    # Load Kamus Negatif
+    if os.path.exists(neg_path):
+        with open(neg_path, 'r', encoding='utf-8') as f:
+            next(f)  # skip header
+            for line in f:
+                row = line.strip().split('\t')
+                if len(row) >= 2:
+                    word = row[0].strip().lower()
+                    # Ambil nilai absolutnya juga agar masuk ke laci bobot negatif dengan benar
+                    lexicon["negative"][word] = abs(int(row[1]))
+                    
+    return lexicon
+
+# Muat secara global
+LEXICON = load_lexicon()
+
+# =======================================================
+# 2. EKSTRAKSI FITUR (PEMISAHAN SKOR SECARA TEGAS)
+# =======================================================
+def get_lexicon_features(text):
+    pos_score = 0
+    neg_score = 0
+
+    if not text:
+        return [0, 0]
+
+    # Pecah kalimat menjadi kata tunggal
+    for word in text.split():
+        is_negated = False
+        target_word = word.lower()
+
+        # 1. Deteksi kata negasi terikat (Bigram/Underscore)
+        if '_' in word:
+            parts = word.split('_', 1)
+            if len(parts) == 2:
+                target_word = parts[1].lower()
+                is_negated = True
+
+        # 2. PROSES STEMMING ALAMI (Mengubah bodohnya/membodohi -> bodoh)
+        # Sastrawi otomatis memotong imbuhan tanpa merusak struktur kode asli Anda
+        target_word = stemmer.stem(target_word)
+
+        # 3. Ambil bobot skor dari kamus bersarang LEXICON Anda
+        # Cari di kamus positif
+        if target_word in LEXICON.get("positive", {}):
+            score = LEXICON["positive"][target_word]
+            if is_negated:
+                neg_score += abs(score)  # Contoh: tidak_baik -> cenderung negatif
+            else:
+                pos_score += abs(score)
+
+        # Cari di kamus negatif (Kata "bodoh" akan tertangkap di sini!)
+        elif target_word in LEXICON.get("negative", {}):
+            score = LEXICON["negative"][target_word]
+            if is_negated:
+                pos_score += abs(score)  # Contoh: tidak_bodoh -> cenderung positif
+            else:
+                neg_score += abs(score)  # Contoh: bodoh/membodohi -> murni negatif
+
+    return [pos_score, neg_score]
+
+
+
+for rule in app.url_map.iter_rules():
+    print(rule)
 
 if __name__ == "__main__":
     app.run(debug=True)

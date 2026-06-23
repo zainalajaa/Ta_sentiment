@@ -4,195 +4,258 @@
 
 <div class="mb-6">
 
-    <div class="bg-white rounded-3xl shadow-lg p-6">
+```
+<div class="bg-white rounded-3xl shadow-lg p-6">
 
-        <h1 class="text-3xl font-bold text-gray-800 mb-2">
-            Likelihood — P(Fitur|Kelas)
-        </h1>
+    <h1 class="text-3xl font-bold text-gray-800 mb-2">
+        Likelihood — P(Fitur|Kelas)
+    </h1>
 
-        <p class="text-gray-500">
-            Probabilitas setiap fitur TF-IDF pada masing-masing kelas
-            berdasarkan model Multinomial Naïve Bayes.
-            <br>
-            <span class="font-mono text-sm">
-                P(Fitur|Kelas) = exp(feature_log_prob_)
+    <p class="text-gray-500">
+        Probabilitas setiap fitur TF-IDF pada masing-masing kelas
+        berdasarkan model Multinomial Naïve Bayes.
+        <br>
+        <span class="font-mono text-sm">
+            P(Fitur|Kelas) = exp(feature_log_prob_)
+        </span>
+    </p>
+
+    <div class="mt-5 flex flex-wrap gap-4">
+
+        <div class="bg-blue-50 text-blue-700 px-5 py-3 rounded-2xl">
+            Jumlah Fitur TF-IDF :
+            <span class="font-bold">
+                {{ n_features }}
             </span>
-        </p>
-
-        <div class="mt-5 flex flex-wrap gap-4">
-
-            <div class="bg-blue-50 text-blue-700 px-5 py-3 rounded-2xl">
-                Jumlah Fitur TF-IDF :
-                <span class="font-bold">
-                    {{ n_features }}
-                </span>
-            </div>
-
-            <div class="bg-emerald-50 text-emerald-700 px-5 py-3 rounded-2xl">
-                Total Data Ditampilkan :
-                <span class="font-bold">
-                    {{ rows|length }}
-                </span>
-            </div>
-
         </div>
 
-        <form method="get" class="mt-5 flex flex-wrap gap-3">
-
-            <input
-                type="text"
-                name="text"
-                value="{{ text }}"
-                placeholder="Masukkan ulasan untuk melihat likelihood fitur yang muncul..."
-                class="flex-1 min-w-[300px] px-4 py-3 rounded-2xl border border-gray-300
-                       focus:outline-none focus:ring-2 focus:ring-emerald-400"
-            >
-
-            <select 
-                name="category" 
-                class="px-4 py-3 rounded-2xl border border-gray-300 bg-white
-                       focus:outline-none focus:ring-2 focus:ring-emerald-400"
-                onchange="this.form.submit()"
-            >
-                <option value="all" {% if category == 'all' %}selected{% endif %}>Semua Kategori</option>
-                <option value="positif" {% if category == 'positif' %}selected{% endif %}>Dominan Positif</option>
-                <option value="negatif" {% if category == 'negatif' %}selected{% endif %}>Dominan Negatif</option>
-            </select>
-
-            <button
-                type="submit"
-                class="px-8 py-3 rounded-2xl
-                       bg-emerald-500 hover:bg-emerald-600
-                       text-white font-semibold"
-            >
-                Terapkan
-            </button>
-
-        </form>
-
-        {% if not text %}
-        <p class="mt-4 text-sm text-gray-500">
-            Menampilkan fitur TF-IDF berdasarkan kategori: 
-            <span class="font-bold text-gray-700">
-                {% if category == 'positif' %}Dominan Positif
-                {% elif category == 'negatif' %}Dominan Negatif
-                {% else %}Semua Fitur
-                {% endif %}
-            </span>.
-            Data diurutkan berdasarkan nilai probabilitas tertinggi.
-        </p>
-        {% endif %}
+        <div class="bg-emerald-50 text-emerald-700 px-5 py-3 rounded-2xl">
+            Total Data Ditampilkan :
+            <span class="font-bold">
+                {{ rows|length }}
+            </span>
+        </div>
 
     </div>
+
+    <form method="get" class="mt-5 flex flex-wrap gap-3">
+
+        <input
+            type="text"
+            name="text"
+            value="{{ text }}"
+            placeholder="Masukkan ulasan untuk melihat likelihood fitur yang muncul..."
+            class="flex-1 min-w-[300px] px-4 py-3 rounded-2xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+        >
+
+        <select
+            name="category"
+            class="px-4 py-3 rounded-2xl border border-gray-300 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-400"
+            onchange="this.form.submit()"
+        >
+
+            <option value="all"
+                {% if category == 'all' %}
+                selected
+                {% endif %}
+            >
+                Semua Kategori
+            </option>
+
+            <option value="positif"
+                {% if category == 'positif' %}
+                selected
+                {% endif %}
+            >
+                Dominan Positif
+            </option>
+
+            <option value="netral"
+                {% if category == 'netral' %}
+                selected
+                {% endif %}
+            >
+                Dominan Netral
+            </option>
+
+            <option value="negatif"
+                {% if category == 'negatif' %}
+                selected
+                {% endif %}
+            >
+                Dominan Negatif
+            </option>
+
+        </select>
+
+        <button
+            type="submit"
+            class="px-8 py-3 rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white font-semibold"
+        >
+            Terapkan
+        </button>
+
+    </form>
+
+    {% if not text %}
+
+    <p class="mt-4 text-sm text-gray-500">
+
+        Menampilkan fitur TF-IDF berdasarkan kategori:
+
+        <span class="font-bold text-gray-700">
+
+            {% if category == 'positif' %}
+                Dominan Positif
+
+            {% elif category == 'netral' %}
+                Dominan Netral
+
+            {% elif category == 'negatif' %}
+                Dominan Negatif
+
+            {% else %}
+                Semua Fitur
+
+            {% endif %}
+
+        </span>.
+
+        Data diurutkan berdasarkan nilai probabilitas tertinggi.
+
+    </p>
+
+    {% endif %}
+
+</div>
+```
 
 </div>
 
 <div class="bg-white rounded-3xl shadow-lg p-6">
 
-    <div class="overflow-auto max-h-[700px] border border-gray-200 rounded-2xl">
+```
+<div class="overflow-auto max-h-[700px] border border-gray-200 rounded-2xl">
 
-        <table class="min-w-full text-sm">
+    <table class="min-w-full text-sm">
 
-            <thead class="sticky top-0 bg-gray-100 z-10">
+        <thead class="sticky top-0 bg-gray-100 z-10">
 
-                <tr>
+            <tr>
 
-                    <th class="px-4 py-3 border w-16">
-                        No
-                    </th>
+                <th class="px-4 py-3 border w-16">
+                    No
+                </th>
 
-                    <th class="px-4 py-3 border">
-                        Fitur
-                    </th>
+                <th class="px-4 py-3 border">
+                    Fitur
+                </th>
 
-                    {% if text %}
-                    <th class="px-4 py-3 border">
-                        Bobot TF-IDF
-                    </th>
+                {% if text %}
+                <th class="px-4 py-3 border">
+                    Bobot TF-IDF
+                </th>
+                {% endif %}
+
+                <th class="px-4 py-3 border">
+                    P(Fitur|Positif)
+                </th>
+
+                <th class="px-4 py-3 border">
+                    P(Fitur|Netral)
+                </th>
+
+                <th class="px-4 py-3 border">
+                    P(Fitur|Negatif)
+                </th>
+
+                <th class="px-4 py-3 border">
+                    Kelas Dominan
+                </th>
+
+            </tr>
+
+        </thead>
+
+        <tbody>
+
+            {% for row in rows %}
+
+            <tr class="hover:bg-gray-50">
+
+                <td class="px-4 py-3 border text-center">
+                    {{ loop.index }}
+                </td>
+
+                <td class="px-4 py-3 border font-semibold">
+                    {{ row.word }}
+                </td>
+
+                {% if text %}
+                <td class="px-4 py-3 border font-mono">
+                    {{ "%.4f"|format(row.weight) }}
+                </td>
+                {% endif %}
+
+                <td class="px-4 py-3 border font-mono">
+                    {{ "%.6f"|format(row.lh_pos) }}
+                </td>
+
+                <td class="px-4 py-3 border font-mono">
+                    {{ "%.6f"|format(row.lh_net) }}
+                </td>
+
+                <td class="px-4 py-3 border font-mono">
+                    {{ "%.6f"|format(row.lh_neg) }}
+                </td>
+
+                <td class="px-4 py-3 border text-center">
+
+                    {% if row.dominan == 'Positif' %}
+
+                    <span class="px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700">
+                        Positif
+                    </span>
+
+                    {% elif row.dominan == 'Netral' %}
+
+                    <span class="px-3 py-1 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-700">
+                        Netral
+                    </span>
+
+                    {% else %}
+
+                    <span class="px-3 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700">
+                        Negatif
+                    </span>
+
                     {% endif %}
 
-                    <th class="px-4 py-3 border">
-                        P(Fitur|Positif)
-                    </th>
+                </td>
 
-                    <th class="px-4 py-3 border">
-                        P(Fitur|Negatif)
-                    </th>
+            </tr>
 
-                    <th class="px-4 py-3 border">
-                        Kelas Dominan
-                    </th>
+            {% else %}
 
-                </tr>
+            <tr>
 
-            </thead>
+                <td
+                    colspan="{% if text %}7{% else %}6{% endif %}"
+                    class="px-4 py-6 text-center text-gray-400"
+                >
+                    Tidak ada fitur yang ditemukan.
+                </td>
 
-            <tbody>
+            </tr>
 
-                {% for row in rows %}
+            {% endfor %}
 
-                <tr class="hover:bg-gray-50">
+        </tbody>
 
-                    <td class="px-4 py-3 border text-center">
-                        {{ loop.index }}
-                    </td>
+    </table>
 
-                    <td class="px-4 py-3 border font-semibold">
-                        {{ row.word }}
-                    </td>
-
-                    {% if text %}
-                    <td class="px-4 py-3 border font-mono">
-                        {{ "%.4f"|format(row.weight) }}
-                    </td>
-                    {% endif %}
-
-                    <td class="px-4 py-3 border font-mono">
-                        {{ "%.6f"|format(row.lh_pos) }}
-                    </td>
-
-                    <td class="px-4 py-3 border font-mono">
-                        {{ "%.6f"|format(row.lh_neg) }}
-                    </td>
-
-                    <td class="px-4 py-3 border text-center">
-
-                        {% if row.dominan == 'Positif' %}
-                        <span class="px-3 py-1 rounded-full text-xs font-semibold
-                                     bg-green-100 text-green-700">
-                            Positif
-                        </span>
-                        {% else %}
-                        <span class="px-3 py-1 rounded-full text-xs font-semibold
-                                     bg-red-100 text-red-700">
-                            Negatif
-                        </span>
-                        {% endif %}
-
-                    </td>
-
-                </tr>
-
-                {% else %}
-
-                <tr>
-
-                    <td
-                        colspan="{% if text %}6{% else %}5{% endif %}"
-                        class="px-4 py-6 text-center text-gray-400"
-                    >
-                        Tidak ada fitur yang ditemukan.
-                    </td>
-
-                </tr>
-
-                {% endfor %}
-
-            </tbody>
-
-        </table>
-
-    </div>
+</div>
+```
 
 </div>
 

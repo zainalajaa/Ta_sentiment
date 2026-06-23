@@ -174,7 +174,7 @@
         </h2>
 
         <p class="text-xs text-gray-400 mt-2">
-            Tidak digunakan
+            Digunakan dalam klasifikasi
         </p>
 
     </div>
@@ -246,6 +246,7 @@
         <canvas
             id="sentimentChart"
             data-positif="{{ total_positif }}"
+            data-netral="{{ total_netral }}"
             data-negatif="{{ total_negatif }}">
         </canvas>
 
@@ -355,7 +356,7 @@
             </p>
 
             <h4 class="text-lg font-bold text-gray-800 mt-2">
-                2 Kelas
+                3 Kelas
             </h4>
 
         </div>
@@ -429,74 +430,94 @@
             Total Bobot TF-IDF Per Kelas
         </h3>
 
-        <div class="grid md:grid-cols-2 gap-6">
+            <div class="grid md:grid-cols-3 gap-6">
+
+            ```
+            <!-- Positif -->
 
             <div class="bg-green-50 border border-green-200 rounded-2xl p-6">
-                
+
                 <div class="flex items-center justify-between">
+
                     <div>
-                        <p class="text-sm text-green-600 font-medium">Total Bobot Positif</p>
-                        <h4 class="text-3xl font-bold text-green-700 mt-2">{{ total_weight_pos }}</h4>
+                        <p class="text-sm text-green-600 font-medium">
+                            Total Bobot Positif
+                        </p>
+
+                        <h4 class="text-3xl font-bold text-green-700 mt-2">
+                            {{ total_weight_pos }}
+                        </h4>
                     </div>
-                    <div class="w-12 h-12 rounded-xl bg-green-200/50 flex items-center justify-center text-green-600">
-                        <i class="fa-solid fa-plus-circle text-xl"></i>
-                    </div>
+
                 </div>
-                
-                <p class="text-xs text-green-600/70 mt-4 leading-relaxed">
-                    Total akumulasi nilai TF-IDF dari seluruh fitur (kata) yang muncul pada dokumen berlabel <strong>Positif</strong> dalam data training.
-                </p>
 
             </div>
+
+            <!-- Netral -->
+
+            <div class="bg-yellow-50 border border-yellow-200 rounded-2xl p-6">
+
+                <div class="flex items-center justify-between">
+
+                    <div>
+                        <p class="text-sm text-yellow-700 font-medium">
+                            Total Bobot Netral
+                        </p>
+
+                        <h4 class="text-3xl font-bold text-yellow-800 mt-2">
+                            {{ total_weight_net }}
+                        </h4>
+                    </div>
+
+                </div>
+
+            </div>
+
+            <!-- Negatif -->
 
             <div class="bg-red-50 border border-red-200 rounded-2xl p-6">
-                
-                <div class="flex items-center justify-between">
-                    <div>
-                        <p class="text-sm text-red-600 font-medium">Total Bobot Negatif</p>
-                        <h4 class="text-3xl font-bold text-red-700 mt-2">{{ total_weight_neg }}</h4>
-                    </div>
-                    <div class="w-12 h-12 rounded-xl bg-red-200/50 flex items-center justify-center text-red-600">
-                        <i class="fa-solid fa-minus-circle text-xl"></i>
-                    </div>
-                </div>
 
-                <p class="text-xs text-red-600/70 mt-4 leading-relaxed">
-                    Total akumulasi nilai TF-IDF dari seluruh fitur (kata) yang muncul pada dokumen berlabel <strong>Negatif</strong> dalam data training.
-                </p>
+                <div class="flex items-center justify-between">
+
+                    <div>
+                        <p class="text-sm text-red-600 font-medium">
+                            Total Bobot Negatif
+                        </p>
+
+                        <h4 class="text-3xl font-bold text-red-700 mt-2">
+                            {{ total_weight_neg }}
+                        </h4>
+                    </div>
+
+                </div>
 
             </div>
 
-        </div>
+         </div>
 
     </div>
 
-    {% if total_netral > 0 %}
+    <div class="mt-8 bg-emerald-50 border border-emerald-200 rounded-2xl p-5">
 
-    <div class="mt-8 bg-amber-50 border border-amber-200 rounded-2xl p-5">
-
-        <h4 class="font-bold text-amber-800 mb-2">
+        <h4 class="font-bold text-emerald-800 mb-2">
             Informasi Dataset
         </h4>
 
-        <p class="text-amber-700 leading-relaxed">
+        <p class="text-emerald-700 leading-relaxed">
 
-            Sistem menggunakan klasifikasi sentimen biner
-            (Positif dan Negatif).
+            Sistem menggunakan klasifikasi sentimen
+            tiga kelas (Positif, Netral, dan Negatif).
 
-            Sebanyak
-            <strong>{{ total_netral }}</strong>
-            data sentimen netral tidak digunakan dalam proses
+            Seluruh data yang telah melalui tahap
+            preprocessing digunakan dalam proses
             training, testing, dan evaluasi model.
 
         </p>
 
     </div>
 
-    {% endif %}
-
 </div>
-```
+
 
 </div>
 

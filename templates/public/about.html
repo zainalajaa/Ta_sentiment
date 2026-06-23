@@ -8,10 +8,8 @@ Tentang Sistem
 
 <section class="hero-bg min-h-screen pt-28 pb-20">
 
-```
 <div class="max-w-7xl mx-auto px-6">
 
-    <!-- HERO -->
     <div class="text-center">
 
         <span class="inline-flex px-4 py-2 rounded-full bg-emerald-500/20 text-emerald-400 text-sm font-medium">
@@ -34,21 +32,20 @@ Tentang Sistem
 
     </div>
 
-    <!-- STATISTIK SISTEM -->
     <div class="mt-20">
 
         <h2 class="text-4xl font-bold text-center">
-            Statistik Sistem
+            Statistik Real-time Pengujian
         </h2>
 
-        <div class="grid md:grid-cols-5 gap-6 mt-12">
+        <div class="grid md:grid-cols-4 gap-6 mt-12">
 
             <div class="glass rounded-3xl p-6 text-center">
                 <h2 class="text-4xl font-bold text-emerald-400">
                     {{ total_analisis }}
                 </h2>
                 <p class="mt-2 text-slate-400">
-                    Total Analisis
+                    Total Analisis User
                 </p>
             </div>
 
@@ -57,7 +54,7 @@ Tentang Sistem
                     {{ total_positif }}
                 </h2>
                 <p class="mt-2 text-slate-400">
-                    Positif
+                    Data Positif
                 </p>
             </div>
 
@@ -66,7 +63,7 @@ Tentang Sistem
                     {{ total_negatif }}
                 </h2>
                 <p class="mt-2 text-slate-400">
-                    Negatif
+                    Data Negatif
                 </p>
             </div>
 
@@ -75,16 +72,7 @@ Tentang Sistem
                     {{ total_netral }}
                 </h2>
                 <p class="mt-2 text-slate-400">
-                    Netral
-                </p>
-            </div>
-
-            <div class="glass rounded-3xl p-6 text-center">
-                <h2 class="text-4xl font-bold text-cyan-400">
-                    {{ "%.2f"|format(accuracy) }}%
-                </h2>
-                <p class="mt-2 text-slate-400">
-                    Accuracy
+                    Data Netral
                 </p>
             </div>
 
@@ -92,7 +80,6 @@ Tentang Sistem
 
     </div>
 
-    <!-- TENTANG SISTEM -->
     <div class="glass rounded-3xl p-10 mt-20">
 
         <h2 class="text-3xl font-bold">
@@ -107,28 +94,27 @@ Tentang Sistem
 
         <p class="mt-4 text-slate-400 leading-relaxed">
             Model yang digunakan telah melalui proses preprocessing,
-            ekstraksi fitur menggunakan TF-IDF, pelatihan model
-            Naïve Bayes, serta evaluasi performa untuk menghasilkan
-            klasifikasi sentimen yang akurat.
+            ekstraksi fitur menggunakan TF-IDF, serta pelatihan model
+            Naïve Bayes untuk menghasilkan klasifikasi sentimen yang optimal
+            berdasarkan batasan Uniform Prior.
         </p>
 
     </div>
 
-    <!-- FITUR -->
     <div class="mt-20">
 
         <h2 class="text-4xl font-bold text-center">
             Fitur Utama Sistem
         </h2>
 
-        <div class="grid md:grid-cols-4 gap-6 mt-12">
+        <div class="grid md:grid-cols-3 gap-6 mt-12">
 
             <div class="glass rounded-2xl p-6">
                 <h3 class="font-bold text-emerald-400">
                     Analisis Sentimen
                 </h3>
                 <p class="mt-3 text-slate-400">
-                    Mengklasifikasikan ulasan menjadi sentimen positif
+                    Mengklasifikasikan ulasan menjadi sentimen positif, netral,
                     atau negatif secara otomatis.
                 </p>
             </div>
@@ -147,16 +133,7 @@ Tentang Sistem
                     Dashboard Monitoring
                 </h3>
                 <p class="mt-3 text-slate-400">
-                    Menampilkan statistik sentimen secara real-time.
-                </p>
-            </div>
-
-            <div class="glass rounded-2xl p-6">
-                <h3 class="font-bold text-emerald-400">
-                    Evaluasi Model
-                </h3>
-                <p class="mt-3 text-slate-400">
-                    Menampilkan accuracy, precision, recall dan F1-score.
+                    Menampilkan statistik sebaran data sentimen secara real-time.
                 </p>
             </div>
 
@@ -164,7 +141,6 @@ Tentang Sistem
 
     </div>
 
-    <!-- ALUR SISTEM -->
     <div class="mt-20">
 
         <h2 class="text-4xl font-bold text-center">
@@ -183,74 +159,32 @@ Tentang Sistem
 
     </div>
 
-    <!-- DATASET PENELITIAN -->
     <div class="mt-20">
 
         <h2 class="text-4xl font-bold text-center">
-            Dataset Penelitian Awal
+            Dataset Penelitian Aktual
         </h2>
 
         <div class="grid md:grid-cols-4 gap-6 mt-12">
 
             <div class="glass rounded-2xl p-6 text-center">
-                <h2 class="text-4xl font-bold text-emerald-400">1000</h2>
-                <p>Total Data</p>
+                <h2 class="text-4xl font-bold text-emerald-400">{{ total_dataset }}</h2>
+                <p>Total Data Latih</p>
             </div>
 
             <div class="glass rounded-2xl p-6 text-center">
-                <h2 class="text-4xl font-bold text-green-400">427</h2>
-                <p>Positif</p>
+                <h2 class="text-4xl font-bold text-green-400">{{ total_positif }}</h2>
+                <p>Total Positif</p>
             </div>
 
             <div class="glass rounded-2xl p-6 text-center">
-                <h2 class="text-4xl font-bold text-red-400">460</h2>
-                <p>Negatif</p>
+                <h2 class="text-4xl font-bold text-red-400">{{ total_negatif }}</h2>
+                <p>Total Negatif</p>
             </div>
 
             <div class="glass rounded-2xl p-6 text-center">
-                <h2 class="text-4xl font-bold text-yellow-400">113</h2>
-                <p>Netral</p>
-            </div>
-
-        </div>
-
-    </div>
-
-    <!-- PERFORMA MODEL -->
-    <div class="mt-20">
-
-        <h2 class="text-4xl font-bold text-center">
-            Performa Model
-        </h2>
-
-        <div class="grid md:grid-cols-4 gap-6 mt-12">
-
-            <div class="glass rounded-2xl p-6 text-center">
-                <h2 class="text-4xl font-bold text-emerald-400">
-                    {{ "%.2f"|format(accuracy) }}%
-                </h2>
-                <p>Accuracy</p>
-            </div>
-
-            <div class="glass rounded-2xl p-6 text-center">
-                <h2 class="text-4xl font-bold text-cyan-400">
-                    {{ "%.2f"|format(precision) }}%
-                </h2>
-                <p>Precision</p>
-            </div>
-
-            <div class="glass rounded-2xl p-6 text-center">
-                <h2 class="text-4xl font-bold text-yellow-400">
-                    {{ "%.2f"|format(recall) }}%
-                </h2>
-                <p>Recall</p>
-            </div>
-
-            <div class="glass rounded-2xl p-6 text-center">
-                <h2 class="text-4xl font-bold text-purple-400">
-                    {{ "%.2f"|format(f1_score) }}%
-                </h2>
-                <p>F1-Score</p>
+                <h2 class="text-4xl font-bold text-yellow-400">{{ total_netral }}</h2>
+                <p>Total Netral</p>
             </div>
 
         </div>
@@ -258,7 +192,6 @@ Tentang Sistem
     </div>
 
 </div>
-```
 
 </section>
 

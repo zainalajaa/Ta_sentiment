@@ -10,7 +10,6 @@ Analisis Sentimen
 
     <div class="max-w-5xl mx-auto px-6">
 
-        <!-- Header -->
         <div class="text-center mb-12">
 
             <span class="px-4 py-2 rounded-full bg-emerald-500/20 text-emerald-400 text-sm">
@@ -25,16 +24,14 @@ Analisis Sentimen
                 Masukkan ulasan atau pendapat Anda tentang aplikasi Edlink,
                 lalu sistem akan mengklasifikasikan sentimen menggunakan
                 metode Naïve Bayes Classifier.
-            </p>
+            </</p>
 
         </div>
 
         {% if session.get('login') and result %}
-        <!-- TAB PERHITUNGAN MANUAL (muncul setelah submit) -->
         {% include 'components/public/calc_nav.html' %}
         {% endif %}
 
-        <!-- FORM -->
         <div class="glass rounded-3xl p-8">
 
             <form method="POST" action="{{ url_for('sentiment') }}">
@@ -64,7 +61,6 @@ Analisis Sentimen
 
         {% if not_ready %}
 
-        <!-- NOTIFIKASI DATASET BELUM SIAP -->
         <div class="glass rounded-3xl p-8 mt-8 border border-amber-500/40">
 
             <div class="flex items-start gap-4">
@@ -84,7 +80,7 @@ Analisis Sentimen
                         Saat ini sistem belum memiliki dataset yang siap untuk
                         melakukan prediksi. Model dapat digunakan setelah admin
                         mengimpor dataset, menjalankan preprocessing, dan dataset
-                        memuat kelas Positif &amp; Negatif. Silakan coba lagi nanti.
+                        memuat kelas Positif, Netral &amp; Negatif. Silakan coba lagi nanti.
                     </p>
 
                 </div>
@@ -97,7 +93,6 @@ Analisis Sentimen
 
         {% if result %}
 
-        <!-- HASIL -->
         <div class="glass rounded-3xl p-8 mt-8">
 
             <h2 class="text-2xl font-bold mb-6">
@@ -113,17 +108,17 @@ Analisis Sentimen
                     </p>
 
                     {% if result|lower == 'positif' %}
-
                     <h3 class="text-4xl font-bold text-green-400">
                         😊 Positif
                     </h3>
-
+                    {% elif result|lower == 'netral' %}
+                    <h3 class="text-4xl font-bold text-yellow-400">
+                        😐 Netral
+                    </h3>
                     {% else %}
-
                     <h3 class="text-4xl font-bold text-red-400">
                         😞 Negatif
                     </h3>
-
                     {% endif %}
 
                 </div>
@@ -146,7 +141,6 @@ Analisis Sentimen
 
         {% if scores %}
 
-        <!-- TINGKAT KEYAKINAN -->
         <div class="glass rounded-3xl p-8 mt-8">
 
             <h3 class="text-2xl font-bold mb-6">
@@ -178,7 +172,32 @@ Analisis Sentimen
 
             </div>
 
-            <div>
+            <div class="mb-6">
+
+                <div class="flex justify-between mb-2">
+
+                    <span class="font-medium text-yellow-400">
+                        😐 Netral
+                    </span>
+
+                    <span class="font-bold">
+                        {{ netral_score|default(0) }}%
+                    </span>
+
+                </div>
+
+                <div class="w-full bg-slate-800 rounded-full h-4 overflow-hidden">
+
+                    <div
+                        class="h-full bg-yellow-500 rounded-full transition-all duration-1000"
+                        style="width: {{ netral_score|default(0) }}%;"
+                    ></div>
+
+                </div>
+
+            </div>
+
+            <div class="mb-6">
 
                 <div class="flex justify-between mb-2">
 
@@ -206,36 +225,23 @@ Analisis Sentimen
             <div class="mt-8 p-5 rounded-2xl bg-slate-900 border border-slate-700">
 
                 {% if result|lower == 'positif' %}
-
                 <p class="text-green-400 font-semibold text-lg">
-
-                    Model memiliki keyakinan sebesar
-                    <span class="font-bold">
-                        {{ positif_score|default(0) }}%
-                    </span>
-                    bahwa ulasan termasuk sentimen positif.
-
+                    Model memiliki keyakinan sebesar <span class="font-bold">{{ positif_score|default(0) }}%</span> bahwa ulasan termasuk sentimen positif.
                 </p>
-
+                {% elif result|lower == 'netral' %}
+                <p class="text-yellow-400 font-semibold text-lg">
+                    Model memiliki keyakinan sebesar <span class="font-bold">{{ netral_score|default(0) }}%</span> bahwa ulasan termasuk sentimen netral.
+                </p>
                 {% else %}
-
                 <p class="text-red-400 font-semibold text-lg">
-
-                    Model memiliki keyakinan sebesar
-                    <span class="font-bold">
-                        {{ negatif_score|default(0) }}%
-                    </span>
-                    bahwa ulasan termasuk sentimen negatif.
-
+                    Model memiliki keyakinan sebesar <span class="font-bold">{{ negatif_score|default(0) }}%</span> bahwa ulasan termasuk sentimen negatif.
                 </p>
-
                 {% endif %}
 
             </div>
 
         </div>
 
-        <!-- TAHAPAN ANALISIS -->
         <div class="glass rounded-3xl p-8 mt-8">
 
             <h3 class="text-2xl font-bold mb-6">
@@ -256,7 +262,7 @@ Analisis Sentimen
                     ✓ Naïve Bayes
                 </div>
 
-                <div class="bg-slate-900 rounded-xl p-4 text-center text-emerald-400 font-semibold">
+                <div class="bg-slate-900 rounded-xl p-4 text-center {% if result|lower == 'positif' %}text-green-400{% elif result|lower == 'netral' %}text-yellow-400{% else %}text-red-400{% endif %} font-semibold">
                     ✓ {{ result|capitalize }}
                 </div>
 
@@ -307,10 +313,10 @@ Analisis Sentimen
 
     {% if session.get('login') and detail %}
 
-    <div class="glass rounded-3xl p-8 mt-8">
+    <div class="glass rounded-3xl p-8 mt-8 max-w-5xl mx-auto px-6">
 
         <h2 class="text-2xl font-bold mb-8">
-            Detail Perhitungan Sentimen
+            Detail Preprocessing
         </h2>
 
         <div class="space-y-6">
@@ -434,9 +440,6 @@ Analisis Sentimen
 
     {% if session.get('login') and posterior %}
 
-    <!-- ============================================= -->
-    <!-- PERHITUNGAN POSTERIOR (NAIVE BAYES) -->
-    <!-- ============================================= -->
     <div class="max-w-5xl mx-auto px-6 mt-8">
 
         <div class="glass rounded-3xl p-8">
@@ -451,13 +454,11 @@ Analisis Sentimen
                 </span>
             </p>
 
-            <!-- HASIL POSTERIOR -->
-            <div class="grid md:grid-cols-2 gap-6 mb-8">
+            <div class="grid md:grid-cols-3 gap-6 mb-8">
 
-                <div class="bg-slate-900 rounded-2xl p-6 border
-                    {% if posterior.predicted|lower == 'positif' %}border-green-500/50{% else %}border-slate-700{% endif %}">
+                <div class="bg-slate-900 rounded-2xl p-6 border {% if posterior.predicted|lower == 'positif' %}border-green-500/50{% else %}border-slate-700{% endif %}">
                     <p class="text-slate-400 text-sm">P(Positif | Ulasan)</p>
-                    <h3 class="text-4xl font-bold text-green-400 mt-2">
+                    <h3 class="text-3xl font-bold text-green-400 mt-2">
                         {{ "%.2f"|format(posterior.posteriors.positif.persen) }}%
                     </h3>
                     <p class="text-xs text-slate-500 mt-2 font-mono">
@@ -465,10 +466,19 @@ Analisis Sentimen
                     </p>
                 </div>
 
-                <div class="bg-slate-900 rounded-2xl p-6 border
-                    {% if posterior.predicted|lower == 'negatif' %}border-red-500/50{% else %}border-slate-700{% endif %}">
+                <div class="bg-slate-900 rounded-2xl p-6 border {% if posterior.predicted|lower == 'netral' %}border-yellow-500/50{% else %}border-slate-700{% endif %}">
+                    <p class="text-slate-400 text-sm">P(Netral | Ulasan)</p>
+                    <h3 class="text-3xl font-bold text-yellow-400 mt-2">
+                        {{ "%.2f"|format(posterior.posteriors.netral.persen) }}%
+                    </h3>
+                    <p class="text-xs text-slate-500 mt-2 font-mono">
+                        log-likelihood: {{ "%.4f"|format(posterior.posteriors.netral.raw) }}
+                    </p>
+                </div>
+
+                <div class="bg-slate-900 rounded-2xl p-6 border {% if posterior.predicted|lower == 'negatif' %}border-red-500/50{% else %}border-slate-700{% endif %}">
                     <p class="text-slate-400 text-sm">P(Negatif | Ulasan)</p>
-                    <h3 class="text-4xl font-bold text-red-400 mt-2">
+                    <h3 class="text-3xl font-bold text-red-400 mt-2">
                         {{ "%.2f"|format(posterior.posteriors.negatif.persen) }}%
                     </h3>
                     <p class="text-xs text-slate-500 mt-2 font-mono">
@@ -478,7 +488,6 @@ Analisis Sentimen
 
             </div>
 
-            <!-- PRIOR -->
             <div class="mb-8">
                 <h4 class="font-semibold text-emerald-400 mb-3">Prior P(H)</h4>
                 <div class="flex flex-wrap gap-4">
@@ -487,13 +496,16 @@ Analisis Sentimen
                         <span class="font-mono">{{ "%.4f"|format(posterior.priors.positif) }}</span>
                     </div>
                     <div class="bg-slate-900 rounded-xl px-5 py-3">
+                        <span class="text-yellow-400 font-semibold">Netral:</span>
+                        <span class="font-mono">{{ "%.4f"|format(posterior.priors.netral) }}</span>
+                    </div>
+                    <div class="bg-slate-900 rounded-xl px-5 py-3">
                         <span class="text-red-400 font-semibold">Negatif:</span>
                         <span class="font-mono">{{ "%.4f"|format(posterior.priors.negatif) }}</span>
                     </div>
                 </div>
             </div>
 
-            <!-- KONTRIBUSI FITUR -->
             <div>
                 <h4 class="font-semibold text-emerald-400 mb-4">
                     Kontribusi Tiap Fitur (Bobot TF-IDF &times; Likelihood)
@@ -506,6 +518,7 @@ Analisis Sentimen
                                 <th class="text-left p-3">Fitur</th>
                                 <th class="text-left p-3">Bobot TF-IDF</th>
                                 <th class="text-left p-3 text-green-400">P(fitur|Positif)</th>
+                                <th class="text-left p-3 text-yellow-400">P(fitur|Netral)</th>
                                 <th class="text-left p-3 text-red-400">P(fitur|Negatif)</th>
                             </tr>
                         </thead>
@@ -515,11 +528,12 @@ Analisis Sentimen
                                 <td class="p-3 font-medium">{{ r.word }}</td>
                                 <td class="p-3 font-mono text-slate-300">{{ "%.4f"|format(r.weight) }}</td>
                                 <td class="p-3 font-mono text-green-400">{{ "%.6f"|format(r.lh_pos) }}</td>
+                                <td class="p-3 font-mono text-yellow-400">{{ "%.6f"|format(r.lh_net) }}</td>
                                 <td class="p-3 font-mono text-red-400">{{ "%.6f"|format(r.lh_neg) }}</td>
                             </tr>
                             {% else %}
                             <tr>
-                                <td colspan="4" class="p-6 text-center text-slate-400">
+                                <td colspan="5" class="p-6 text-center text-slate-400">
                                     Tidak ada fitur yang cocok dengan ulasan.
                                 </td>
                             </tr>
@@ -536,5 +550,6 @@ Analisis Sentimen
     {% endif %}
 
 </section>
+
 
 {% endblock %}

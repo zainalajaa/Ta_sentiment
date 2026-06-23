@@ -11,18 +11,23 @@
         </h1>
 
         <p class="text-gray-500">
-            Probabilitas awal tiap kelas sentimen sebelum melihat kata pada ulasan.
+            Probabilitas awal setiap kelas sentimen sebelum mempertimbangkan
+            fitur atau kata pada ulasan.
             <br>
             <span class="font-mono text-sm">
-                P(Kelas) = Jumlah data kelas / Total data
+                P(Kelas) = Jumlah Data Kelas / Total Data Training
             </span>
         </p>
 
         <div class="mt-5 flex flex-wrap gap-4">
+
             <div class="bg-blue-50 text-blue-700 px-5 py-3 rounded-2xl">
-                Total Data Latih:
-                <span class="font-bold">{{ total_docs }}</span>
+                Total Data Training :
+                <span class="font-bold">
+                    {{ total_docs }}
+                </span>
             </div>
+
         </div>
 
     </div>
@@ -32,25 +37,110 @@
 <div class="bg-white rounded-3xl shadow-lg p-6 overflow-auto">
 
     <table class="min-w-full text-sm">
+
         <thead>
+
             <tr class="bg-gray-100">
-                <th class="px-4 py-3 border">Kelas</th>
-                <th class="px-4 py-3 border">Jumlah Data</th>
-                <th class="px-4 py-3 border">Total Data</th>
-                <th class="px-4 py-3 border">Prior P(H)</th>
+
+                <th class="px-4 py-3 border">
+                    Kelas Sentimen
+                </th>
+
+                <th class="px-4 py-3 border">
+                    Jumlah Data
+                </th>
+
+                <th class="px-4 py-3 border">
+                    Total Data Training
+                </th>
+
+                <th class="px-4 py-3 border">
+                    Prior P(H)
+                </th>
+
             </tr>
+
         </thead>
+
         <tbody>
+
             {% for row in rows %}
-            <tr>
-                <td class="px-4 py-3 border font-semibold">{{ row.kelas }}</td>
-                <td class="px-4 py-3 border">{{ row.jumlah }}</td>
-                <td class="px-4 py-3 border">{{ row.total }}</td>
-                <td class="px-4 py-3 border font-mono">{{ "%.5f"|format(row.prior) }}</td>
+
+            <tr class="hover:bg-gray-50">
+
+                <td class="px-4 py-3 border font-semibold">
+
+                    {% if row.kelas|lower == 'positif' %}
+
+                    <span class="px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700">
+                        Positif
+                    </span>
+
+                    {% elif row.kelas|lower == 'netral' %}
+
+                    <span class="px-3 py-1 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-700">
+                        Netral
+                    </span>
+
+                    {% else %}
+
+                    <span class="px-3 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700">
+                        Negatif
+                    </span>
+
+                    {% endif %}
+
+                </td>
+
+                <td class="px-4 py-3 border text-center">
+                    {{ row.jumlah }}
+                </td>
+
+                <td class="px-4 py-3 border text-center">
+                    {{ row.total }}
+                </td>
+
+                <td class="px-4 py-3 border text-center font-mono">
+                    {{ "%.5f"|format(row.prior) }}
+                </td>
+
             </tr>
+
+            {% else %}
+
+            <tr>
+
+                <td colspan="4"
+                    class="px-4 py-6 text-center text-gray-400">
+
+                    Data prior belum tersedia.
+
+                </td>
+
+            </tr>
+
             {% endfor %}
+
         </tbody>
+
     </table>
+
+</div>
+
+<div class="mt-6 bg-emerald-50 border border-emerald-200 rounded-2xl p-5">
+
+    <h4 class="font-bold text-emerald-800 mb-2">
+        Keterangan
+    </h4>
+
+    <p class="text-emerald-700 leading-relaxed">
+
+        Prior merupakan probabilitas awal suatu kelas sebelum memperhitungkan
+        fitur atau kata pada ulasan. Nilai prior dihitung berdasarkan
+        proporsi jumlah data pada masing-masing kelas terhadap total
+        data training.
+
+    </p>
 
 </div>
 

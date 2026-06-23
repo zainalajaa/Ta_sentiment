@@ -13,7 +13,8 @@
 
 <p class="text-gray-500">
     Hasil klasifikasi data testing menggunakan
-    Multinomial Naïve Bayes.
+    Multinomial Naïve Bayes untuk sentimen
+    Positif, Netral, dan Negatif.
 </p>
 ```
 
@@ -21,7 +22,7 @@
 
 <!-- STATISTIK -->
 
-<div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
 
 ```
 <div class="bg-white rounded-3xl shadow-lg p-6">
@@ -44,6 +45,18 @@
 
     <h2 class="text-4xl font-bold text-emerald-600 mt-3">
         {{ results | selectattr('prediction', 'equalto', 'positif') | list | length }}
+    </h2>
+
+</div>
+
+<div class="bg-white rounded-3xl shadow-lg p-6">
+
+    <p class="text-sm text-gray-500">
+        Prediksi Netral
+    </p>
+
+    <h2 class="text-4xl font-bold text-yellow-600 mt-3">
+        {{ results | selectattr('prediction', 'equalto', 'netral') | list | length }}
     </h2>
 
 </div>
@@ -126,6 +139,8 @@
 
                     </td>
 
+                    <!-- ACTUAL -->
+
                     <td class="px-4 py-3 border text-center">
 
                         <span class="
@@ -133,8 +148,13 @@
 
                             {% if item.actual == 'positif' %}
                                 bg-emerald-100 text-emerald-700
+
+                            {% elif item.actual == 'netral' %}
+                                bg-yellow-100 text-yellow-700
+
                             {% else %}
                                 bg-red-100 text-red-700
+
                             {% endif %}
                         ">
                             {{ item.actual }}
@@ -142,15 +162,22 @@
 
                     </td>
 
+                    <!-- PREDICTION -->
+
                     <td class="px-4 py-3 border text-center">
 
                         <span class="
                             px-3 py-1 rounded-xl text-sm font-medium
 
                             {% if item.prediction == 'positif' %}
-                                bg-blue-100 text-blue-700
+                                bg-emerald-100 text-emerald-700
+
+                            {% elif item.prediction == 'netral' %}
+                                bg-yellow-100 text-yellow-700
+
                             {% else %}
-                                bg-orange-100 text-orange-700
+                                bg-red-100 text-red-700
+
                             {% endif %}
                         ">
                             {{ item.prediction }}
