@@ -8,11 +8,16 @@
 
     <div class="max-w-6xl mx-auto px-6">
 
+        <!-- Header -->
         <div class="text-center mb-10">
             <span class="px-4 py-2 rounded-full bg-emerald-500/20 text-emerald-400 text-sm">
                 Perhitungan Manual
             </span>
-            <h1 class="mt-6 text-4xl md:text-5xl font-bold">Prediksi Data Uji</h1>
+
+            <h1 class="mt-6 text-4xl md:text-5xl font-bold">
+                Prediksi Data Uji
+            </h1>
+
             <p class="mt-4 text-slate-400 max-w-2xl mx-auto">
                 Perbandingan label aktual dan hasil prediksi model pada data uji (test split).
             </p>
@@ -21,55 +26,148 @@
         {% include 'components/public/calc_nav.html' %}
 
         {% if not_ready %}
+
             {% include 'public/classification/_not_ready.html' %}
+
         {% else %}
 
+        <!-- Ringkasan -->
         <div class="glass rounded-2xl p-6 mb-8 inline-block">
-            <p class="text-slate-400 text-sm">Total Data Uji</p>
-            <h3 class="text-3xl font-bold mt-2">{{ results|length }}</h3>
+            <p class="text-slate-400 text-sm">
+                Total Data Uji
+            </p>
+
+            <h3 class="text-3xl font-bold mt-2">
+                {{ results|length }}
+            </h3>
         </div>
 
+        <!-- Tabel -->
         <div class="glass rounded-3xl p-6">
+
             <div class="overflow-x-auto max-h-[650px] overflow-y-auto">
+
                 <table class="w-full text-sm">
+
                     <thead class="sticky top-0 bg-slate-900/90">
+
                         <tr class="border-b border-slate-700 text-slate-300">
+
                             <th class="text-left p-3">No</th>
-                            <th class="text-left p-3">Teks (stemming)</th>
-                            <th class="text-left p-3">Aktual</th>
-                            <th class="text-left p-3">Prediksi</th>
-                            <th class="text-left p-3">Status</th>
+
+                            <th class="text-left p-3">
+                                Teks (Stemming)
+                            </th>
+
+                            <th class="text-center p-3">
+                                Label Aktual
+                            </th>
+
+                            <th class="text-center p-3">
+                                Label Prediksi
+                            </th>
+
+                            <th class="text-center p-3">
+                                Status
+                            </th>
+
                         </tr>
+
                     </thead>
+
                     <tbody>
+
                         {% for r in results %}
+
                         <tr class="border-b border-slate-800 hover:bg-slate-800/40 align-top">
-                            <td class="p-3 text-slate-500">{{ loop.index }}</td>
-                            <td class="p-3 text-slate-300 max-w-md">{{ r.text }}</td>
-                            <td class="p-3">
-                                <span class="px-3 py-1 rounded-lg text-xs font-semibold
-                                    {% if r.actual == 'positif' %}bg-green-500/20 text-green-400{% else %}bg-red-500/20 text-red-400{% endif %}">
-                                    {{ r.actual|capitalize }}
-                                </span>
+
+                            <td class="p-3 text-slate-500">
+                                {{ loop.index }}
                             </td>
-                            <td class="p-3">
-                                <span class="px-3 py-1 rounded-lg text-xs font-semibold
-                                    {% if r.prediction == 'positif' %}bg-green-500/20 text-green-400{% else %}bg-red-500/20 text-red-400{% endif %}">
-                                    {{ r.prediction|capitalize }}
-                                </span>
+
+                            <td class="p-3 text-slate-300 max-w-lg">
+                                {{ r.text }}
                             </td>
-                            <td class="p-3">
-                                {% if r.actual == r.prediction %}
-                                <span class="text-green-400">✓ Tepat</span>
+
+                            <!-- Label Aktual -->
+                            <td class="p-3 text-center">
+
+                                {% if r.actual == 'positif' %}
+
+                                    <span class="px-3 py-1 rounded-lg bg-green-500/20 text-green-400 text-xs font-semibold">
+                                        Positif
+                                    </span>
+
+                                {% elif r.actual == 'netral' %}
+
+                                    <span class="px-3 py-1 rounded-lg bg-yellow-500/20 text-yellow-400 text-xs font-semibold">
+                                        Netral
+                                    </span>
+
                                 {% else %}
-                                <span class="text-amber-400">✗ Salah</span>
+
+                                    <span class="px-3 py-1 rounded-lg bg-red-500/20 text-red-400 text-xs font-semibold">
+                                        Negatif
+                                    </span>
+
                                 {% endif %}
+
                             </td>
+
+                            <!-- Label Prediksi -->
+                            <td class="p-3 text-center">
+
+                                {% if r.prediction == 'positif' %}
+
+                                    <span class="px-3 py-1 rounded-lg bg-green-500/20 text-green-400 text-xs font-semibold">
+                                        Positif
+                                    </span>
+
+                                {% elif r.prediction == 'netral' %}
+
+                                    <span class="px-3 py-1 rounded-lg bg-yellow-500/20 text-yellow-400 text-xs font-semibold">
+                                        Netral
+                                    </span>
+
+                                {% else %}
+
+                                    <span class="px-3 py-1 rounded-lg bg-red-500/20 text-red-400 text-xs font-semibold">
+                                        Negatif
+                                    </span>
+
+                                {% endif %}
+
+                            </td>
+
+                            <!-- Status -->
+                            <td class="p-3 text-center">
+
+                                {% if r.actual == r.prediction %}
+
+                                    <span class="inline-flex items-center gap-1 text-green-400 font-medium">
+                                        ✓ Tepat
+                                    </span>
+
+                                {% else %}
+
+                                    <span class="inline-flex items-center gap-1 text-red-400 font-medium">
+                                        ✗ Salah
+                                    </span>
+
+                                {% endif %}
+
+                            </td>
+
                         </tr>
+
                         {% endfor %}
+
                     </tbody>
+
                 </table>
+
             </div>
+
         </div>
 
         {% endif %}

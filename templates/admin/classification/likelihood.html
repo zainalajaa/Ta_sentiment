@@ -4,36 +4,175 @@
 
 <div class="mb-6">
 
-```
+
 <div class="bg-white rounded-3xl shadow-lg p-6">
 
-    <h1 class="text-3xl font-bold text-gray-800 mb-2">
+    <h1 class="text-3xl font-bold text-gray-800">
         Likelihood — P(Fitur|Kelas)
     </h1>
 
-    <p class="text-gray-500">
-        Probabilitas setiap fitur TF-IDF pada masing-masing kelas
-        berdasarkan model Multinomial Naïve Bayes.
-        <br>
-        <span class="font-mono text-sm">
-            P(Fitur|Kelas) = exp(feature_log_prob_)
-        </span>
+    <p class="mt-2 text-gray-500 leading-relaxed">
+        Halaman ini menampilkan probabilitas kemunculan setiap fitur pada
+        masing-masing kelas berdasarkan model
+        <strong>Multinomial Naïve Bayes</strong>.
     </p>
 
-    <div class="mt-5 flex flex-wrap gap-4">
+    <div class="mt-4 bg-slate-50 border rounded-2xl p-4">
 
-        <div class="bg-blue-50 text-blue-700 px-5 py-3 rounded-2xl">
-            Jumlah Fitur TF-IDF :
-            <span class="font-bold">
-                {{ n_features }}
-            </span>
+        <p class="text-sm text-gray-600">
+            Rumus Likelihood
+        </p>
+
+        <p class="font-mono text-lg mt-1 text-indigo-700">
+            P(Fitur|Kelas) = exp(feature_log_prob_)
+        </p>
+
+    </div>
+
+    <!-- ========================= -->
+    <!-- TOTAL BOBOT PER KELAS -->
+    <!-- ========================= -->
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-5 mt-6">
+
+        <div class="rounded-2xl border border-green-200 bg-green-50 p-5">
+
+            <h3 class="text-lg font-bold text-green-700">
+                Kelas Positif
+            </h3>
+
+            <div class="mt-4 space-y-2 text-sm">
+
+                <div class="flex justify-between">
+                    <span>ΣTc</span>
+                    <span class="font-mono font-bold">
+                        {{ "%.4f"|format(class_totals['positif'].sum_tc) }}
+                    </span>
+                </div>
+
+                <div class="flex justify-between">
+                    <span>|V|</span>
+                    <span class="font-mono">
+                        {{ class_totals['positif'].vocab }}
+                    </span>
+                </div>
+
+                <div class="border-t pt-2 flex justify-between font-semibold">
+
+                    <span>ΣTc + |V|</span>
+
+                    <span class="font-mono">
+                        {{ "%.4f"|format(class_totals['positif'].denominator) }}
+                    </span>
+
+                </div>
+
+            </div>
+
         </div>
 
-        <div class="bg-emerald-50 text-emerald-700 px-5 py-3 rounded-2xl">
-            Total Data Ditampilkan :
-            <span class="font-bold">
+        <div class="rounded-2xl border border-yellow-200 bg-yellow-50 p-5">
+
+            <h3 class="text-lg font-bold text-yellow-700">
+                Kelas Netral
+            </h3>
+
+            <div class="mt-4 space-y-2 text-sm">
+
+                <div class="flex justify-between">
+                    <span>ΣTc</span>
+                    <span class="font-mono font-bold">
+                        {{ "%.4f"|format(class_totals['netral'].sum_tc) }}
+                    </span>
+                </div>
+
+                <div class="flex justify-between">
+                    <span>|V|</span>
+                    <span class="font-mono">
+                        {{ class_totals['netral'].vocab }}
+                    </span>
+                </div>
+
+                <div class="border-t pt-2 flex justify-between font-semibold">
+
+                    <span>ΣTc + |V|</span>
+
+                    <span class="font-mono">
+                        {{ "%.4f"|format(class_totals['netral'].denominator) }}
+                    </span>
+
+                </div>
+
+            </div>
+
+        </div>
+
+        <div class="rounded-2xl border border-red-200 bg-red-50 p-5">
+
+            <h3 class="text-lg font-bold text-red-700">
+                Kelas Negatif
+            </h3>
+
+            <div class="mt-4 space-y-2 text-sm">
+
+                <div class="flex justify-between">
+                    <span>ΣTc</span>
+                    <span class="font-mono font-bold">
+                        {{ "%.4f"|format(class_totals['negatif'].sum_tc) }}
+                    </span>
+                </div>
+
+                <div class="flex justify-between">
+                    <span>|V|</span>
+                    <span class="font-mono">
+                        {{ class_totals['negatif'].vocab }}
+                    </span>
+                </div>
+
+                <div class="border-t pt-2 flex justify-between font-semibold">
+
+                    <span>ΣTc + |V|</span>
+
+                    <span class="font-mono">
+                        {{ "%.4f"|format(class_totals['negatif'].denominator) }}
+                    </span>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- ========================= -->
+    <!-- RINGKASAN -->
+    <!-- ========================= -->
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+
+        <div class="bg-blue-50 border border-blue-200 rounded-2xl p-5">
+
+            <p class="text-sm text-blue-700">
+                Jumlah Fitur TF-IDF
+            </p>
+
+            <h3 class="text-3xl font-bold text-blue-700 mt-2">
+                {{ n_features }}
+            </h3>
+
+        </div>
+
+        <div class="bg-emerald-50 border border-emerald-200 rounded-2xl p-5">
+
+            <p class="text-sm text-emerald-700">
+                Total Data Ditampilkan
+            </p>
+
+            <h3 class="text-3xl font-bold text-emerald-700 mt-2">
                 {{ rows|length }}
-            </span>
+            </h3>
+
         </div>
 
     </div>
@@ -119,7 +258,7 @@
 
             {% endif %}
 
-        </span>.
+        </span>
 
         Data diurutkan berdasarkan nilai probabilitas tertinggi.
 
@@ -128,13 +267,13 @@
     {% endif %}
 
 </div>
-```
+
 
 </div>
 
 <div class="bg-white rounded-3xl shadow-lg p-6">
 
-```
+
 <div class="overflow-auto max-h-[700px] border border-gray-200 rounded-2xl">
 
     <table class="min-w-full text-sm">
@@ -255,7 +394,7 @@
     </table>
 
 </div>
-```
+
 
 </div>
 

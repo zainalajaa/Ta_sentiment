@@ -3417,6 +3417,36 @@ def get_tfidf_model(force_retrain=False):
     model = MultinomialNB()
     model.fit(X_train_resampled, y_train_resampled)
 
+    # ==========================================
+    # TOTAL BOBOT FITUR SETIAP KELAS
+    # ==========================================
+
+    vocab_size = X_train_combined.shape[1]
+
+    class_totals = {}
+
+    for i, kelas in enumerate(model.classes_):
+        total = float(model.feature_count_[i].sum())
+
+        class_totals[kelas] = {
+            'sum_tc': total,
+            'vocab': vocab_size,
+            'denominator': total + vocab_size
+        }
+
+    print("\n========== TOTAL BOBOT FITUR PER KELAS ==========")
+
+    vocab_size = X_train_combined.shape[1]
+
+    print("Jumlah fitur (|V|):", vocab_size)
+
+    for i, kelas in enumerate(model.classes_):
+        total_bobot = model.feature_count_[i].sum()
+
+        print(f"\nKelas : {kelas}")
+        print(f"ΣTc                = {total_bobot:.4f}")
+        print(f"ΣTc + |V|          = {total_bobot + vocab_size:.4f}")
+
     class_index = {label: idx for idx, label in enumerate(model.classes_)}
 
     classes, counts = np.unique(y_train_resampled, return_counts=True)
@@ -3432,8 +3462,10 @@ def get_tfidf_model(force_retrain=False):
     _MODEL_BUNDLE_CACHE = {
         'model': model,
         'vectorizer': vectorizer,
+        'classes': model.classes_,
         'feature_names': feature_names,
         'class_index': class_index,
+        'class_totals': class_totals,
         'priors': priors,
         'X_train_combined': X_train_combined, # Untuk kebutuhan hitung rumus manual backend
         'X_test_combined': X_test_combined,
@@ -3688,6 +3720,7 @@ def likelihood_view():
 
     try:
         bundle = get_tfidf_model()
+        class_totals = bundle['class_totals']
 
     except DataNotReadyError as e:
 
@@ -3844,6 +3877,7 @@ def likelihood_view():
 
     return render_template(
         'admin/classification/likelihood.html',
+        class_totals=class_totals,
 
         rows=rows,
 
@@ -4219,22 +4253,28 @@ def public_tfidf():
 @login_required
 def public_prior():
     from collections import Counter
+
     try:
         bundle = get_tfidf_model()
     except Exception:
-        return render_template('public/classification/prior.html', not_ready=True)
+        return render_template(
+            'public/classification/prior.html',
+            not_ready=True
+        )
 
     X_train_raw, _, y_train, _, _, _ = get_split_data()
+
     counts = Counter(y_train)
     total = len(y_train)
 
     rows = []
+
     for kelas in ['positif', 'netral', 'negatif']:
         rows.append({
             'kelas': kelas.capitalize(),
             'jumlah': counts.get(kelas, 0),
             'total': total,
-            'prior': bundle['priors'][bundle['class_index'][kelas]],
+            'prior': bundle['priors'].get(kelas, 0)
         })
 
     return render_template(
@@ -4428,7 +4468,6 @@ def load_lexicon():
 
 # Muat secara global
 LEXICON = load_lexicon()
-
 # =======================================================
 # 2. EKSTRAKSI FITUR (PEMISAHAN SKOR SECARA TEGAS)
 # =======================================================
@@ -4470,11 +4509,69 @@ def get_lexicon_features(text):
             if is_negated:
                 pos_score += abs(score)  # Contoh: tidak_bodoh -> cenderung positif
             else:
-                neg_score += abs(score)  # Contoh: bodoh/membodohi -> murni negatif
-
+                neg_score += abs(score)  #
+    
+    
     return [pos_score, neg_score]
 
+# @app.route("/debug_lexicon")
+# def debug_lexicon():
 
+#     text = "bug nya banget bikin risih"
+
+#     print("\n========== DEBUG LEKSIKON ==========")
+#     print("Kalimat :", text)
+
+#     pos_score = 0
+#     neg_score = 0
+
+#     for word in text.split():
+
+#         target = stemmer.stem(word.lower())
+
+#         print("\nToken :", word)
+#         print("Stem  :", target)
+
+#         if target in LEXICON["positive"]:
+
+#             score = LEXICON["positive"][target]
+
+#             print("Kamus : POSITIVE")
+#             print("Bobot :", score)
+
+#             pos_score += score
+
+#         elif target in LEXICON["negative"]:
+
+#             score = LEXICON["negative"][target]
+
+#             print("Kamus : NEGATIVE")
+#             print("Bobot :", score)
+
+#             neg_score += score
+
+#         else:
+
+#             print("Kamus : TIDAK DITEMUKAN")
+#             print("Bobot : 0")
+
+#     print("\nHASIL")
+#     print("Positif :", pos_score)
+#     print("Negatif :", neg_score)
+
+#     return str([pos_score, neg_score])
+
+# @app.route("/debug_vocab")
+# def debug_vocab():
+
+#     bundle = get_tfidf_model()
+#     vectorizer = bundle["vectorizer"]
+
+#     print("="*50)
+#     print("Jumlah vocabulary :", len(vectorizer.vocabulary_))
+#     print("Apakah 'risih' ada?", "risih" in vectorizer.vocabulary_)
+
+#     return "Selesai, cek terminal."
 
 for rule in app.url_map.iter_rules():
     print(rule)
