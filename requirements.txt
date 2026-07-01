@@ -8,3 +8,5 @@ joblib
 matplotlib
 python-dotenv
 mysql-connector-python
+imbalanced-learn
+python-calamine

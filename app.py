@@ -1188,60 +1188,33 @@ def predict(tokens):
     # 1. Gabungkan token menjadi string utuh (mengandung underscore, misal: "kurang_bagus")
     text_string = " ".join(tokens) if isinstance(tokens, list) else tokens
 
-    # 2. Ambil data latih yang sudah sinkron dari database
-    session['test_size'] = 0.1
-    X_train, X_test, y_train, y_test, lex_train, lex_test = get_split_data()
+    # 2. Ambil data latih yang sudah sinkron dari database.
+    #    Gunakan rasio split yang dipilih user (jangan menimpanya),
+    #    agar konsisten dengan halaman split-data & evaluasi.
+    X_train, X_test, y_train, y_test = get_split_data()
 
     # 3. Lakukan fitting TF-IDF berdasarkan data training asli
     vectorizer = get_vectorizer()
     X_train_tfidf = vectorizer.fit_transform(X_train)
-    
+
     # Transformasi teks input user
     user_tfidf = vectorizer.transform([text_string])
 
-    # 4. Ambil skor mentah Leksikon sebagai Tuple (pos_score, neg_score)
-    user_lex_raw = get_lexicon_features(text_string) 
-    
-    import numpy as np
-    user_lexicon = np.array([user_lex_raw])
-
-    # 5. Gabungkan TF-IDF dengan Lexicon menggunakan hstack (Agar arsitektur asli Anda tidak patah)
-    from scipy.sparse import hstack
-    X_train_combined = hstack([X_train_tfidf, lex_train])
-    X_user_combined = hstack([user_tfidf, user_lexicon])
-
-    # 6. Bangun model Naive Bayes dengan setelan Uniform Prior (fit_prior=False)
+    # 4. Bangun model Naive Bayes dengan setelan Uniform Prior (fit_prior=False)
+    #    Fitur murni TF-IDF (lexicon tidak lagi digunakan sebagai fitur model,
+    #    hanya dipakai pada pelabelan awal).
     model = MultinomialNB(fit_prior=False)
-    model.fit(X_train_combined, y_train)
+    model.fit(X_train_tfidf, y_train)
 
-    # 7. Ambil nilai probabilitas asli dari masing-masing kelas (predict_proba)
-    probabilities = model.predict_proba(X_user_combined)[0]
-    
+    # 5. Ambil nilai probabilitas asli dari masing-masing kelas (predict_proba)
+    probabilities = model.predict_proba(user_tfidf)[0]
+
     # Petakan hasil probabilitas ke dalam dictionary skor (skala 0 - 100)
     scores = {}
     for cl, prob in zip(model.classes_, probabilities):
         scores[cl.lower()] = prob * 100
 
-    # ====================================================================
-    # KUNCI BIJAKSANA: KOREKSI HYBRID (RULES INTEGRATION)
-    # Jika Leksikon mendeteksi skor negatif lebih besar akibat pembalikan kata negasi,
-    # kita balik distribusi probabilitas akhir agar kelas Negatif menang mutlak.
-    # ====================================================================
-    pos_lex_score = user_lex_raw[0]
-    neg_lex_score = user_lex_raw[1]
-
-    if neg_lex_score > pos_lex_score:
-        if 'negatif' in scores and 'positif' in scores:
-            # Ambil nilai tertinggi yang sempat didapatkan (biasanya diraih kelas positif karena bias data)
-            highest_prob = max(scores.values())
-            
-            # Tukar posisinya secara matematis yang sah demi menyeimbangkan bias data latih
-            scores['negatif'] = max(highest_prob, 65.0) # Set minimal 65% agar grafik bar jelas berwarna merah
-            scores['positif'] = min(scores['positif'], 100.0 - scores['negatif'] - 10.0)
-            if 'netral' in scores:
-                scores['netral'] = max(0.0, 100.0 - scores['positif'] - scores['negatif'])
-
-    # 8. Tentukan label akhir berdasarkan nilai probabilitas tertinggi setelah dikoreksi Leksikon
+    # 6. Tentukan label akhir berdasarkan nilai probabilitas tertinggi
     predicted_label = max(scores, key=scores.get).capitalize()
 
     # Bulatkan skor untuk kebutuhan visualisasi di frontend web Anda
@@ -1574,7 +1547,7 @@ def dashboard():
 
         # 4. Ambil Rasio Pembagian Data dari Session
         test_size = session.get('test_size', 0.2)
-        split_ratio_map = {0.1: '90 : 10', 0.2: '80 : 20', 0.3: '70 : 30', 0.4: '60 : 40'}
+        split_ratio_map = {0.1: '90 : 10', 0.2: '80 : 20', 0.3: '70 : 30', 0.4: '60 : 40', 0.5: '50 : 50'}
         split_ratio = split_ratio_map.get(test_size, '80 : 20')
 
         # 5. Lakukan Prediksi Menggunakan Matriks Gabungan (TF-IDF + Leksikon)
@@ -1592,13 +1565,12 @@ def dashboard():
         
         # Fallback jika X_train_combined tidak tersimpan di cache, kita buat ulang dimensinya secara aman
         if X_train_combined is None:
-            (X_train_raw, _, _, _, _, _) = get_split_data()
+            (X_train_raw, _, _, _) = get_split_data()
             if isinstance(X_train_raw, list):
                 X_train_tfidf = vectorizer.transform(X_train_raw)
             else:
                 X_train_tfidf = X_train_raw
-            lex_train_shifted = np.full((X_train_tfidf.shape[0], 2), 5.0, dtype=np.float64)
-            X_train_combined = sp.hstack((X_train_tfidf, lex_train_shifted), format='csr')
+            X_train_combined = sp.csr_matrix(X_train_tfidf)
 
         y_train_array = np.array(y_train)
         pos_idx = np.where(y_train_array == 'positif')[0]
@@ -2218,7 +2190,13 @@ def import_data():
 
     else:
 
-        df = pd.read_excel(filepath)
+        # Baca Excel. Sebagian file .xlsx hasil export punya spesifikasi
+        # workbook yang rusak sehingga openpyxl gagal ("0 worksheets found").
+        # Pakai engine calamine yang lebih toleran sebagai fallback.
+        try:
+            df = pd.read_excel(filepath)
+        except ValueError:
+            df = pd.read_excel(filepath, engine='calamine')
 
     # NORMALISASI KOLOM
     df.columns = df.columns.str.strip().str.lower()
@@ -2228,29 +2206,10 @@ def import_data():
         flash('Kolom content tidak ditemukan pada file Excel')
         return redirect('/preprocessing')
 
-    # LABEL: PAKAI KOLOM 'label' BILA ADA,
-    # JIKA TIDAK TURUNKAN DARI 'score' (rating)
-    # 4-5 = positif, 3 = netral, 1-2 = negatif
-    has_label = 'label' in df.columns
-    has_score = 'score' in df.columns
-
-    if not has_label and not has_score:
-        flash('Kolom label atau score tidak ditemukan pada file Excel')
-        return redirect('/preprocessing')
-
-    def label_from_score(value):
-        try:
-            score = float(value)
-        except (ValueError, TypeError):
-            return None
-
-        if score >= 4:
-            return 'positif'
-        elif score == 3:
-            return 'netral'
-        else:
-            return 'negatif'
-
+    # PELABELAN AWAL TIDAK LAGI DARI RATING/SCORE.
+    # Label ditentukan dari kamus lexicon InSet pada tahap preprocessing
+    # (lihat process_preprocessing), sehingga kolom label/score pada file
+    # import diabaikan. Saat import, label dibiarkan kosong dulu.
     conn = get_connection()
     cursor = conn.cursor()
 
@@ -2258,23 +2217,15 @@ def import_data():
 
         content = str(row['content']).strip()
 
-        if has_label:
-            label = str(row['label']).strip().lower()
-        else:
-            label = label_from_score(row['score'])
-
         if not content or content.lower() == 'nan':
-            continue
-
-        if not label:
             continue
 
         cursor.execute(
             """
-            INSERT INTO preprocessing(content, label)
-            VALUES (%s, %s)
+            INSERT INTO preprocessing(content)
+            VALUES (%s)
             """,
-            (content, label)
+            (content,)
         )
 
     conn.commit()
@@ -2283,7 +2234,11 @@ def import_data():
 
     clear_model_cache()
 
-    flash('Dataset berhasil diimport', 'success')
+    flash(
+        'Dataset berhasil diimport. Jalankan Preprocessing untuk '
+        'melabeli data dengan kamus lexicon.',
+        'success'
+    )
 
     return redirect('/preprocessing')
 
@@ -2522,6 +2477,28 @@ def process_preprocessing():
         )
 
         # =================================
+        # 7. PELABELAN AWAL (LEXICON INSET)
+        # =================================
+        # Menggantikan pelabelan berbasis rating. Skor dihitung dari
+        # teks hasil stemming (negasi seperti tidak_baik sudah tertangani).
+        # Aturan selisih murni:
+        #   pos_score > neg_score -> positif
+        #   neg_score > pos_score -> negatif
+        #   sama (termasuk data kosong tanpa kata lexicon) -> netral
+        # Catatan: data kosong (stemming kosong) TIDAK dihapus, tetap
+        # ditampilkan. Baris seperti ini otomatis tidak ikut pelatihan
+        # karena get_split_data memfilter stemming yang kosong.
+
+        pos_score, neg_score = get_lexicon_features(stemming)
+
+        if pos_score > neg_score:
+            label = 'positif'
+        elif neg_score > pos_score:
+            label = 'negatif'
+        else:
+            label = 'netral'
+
+        # =================================
         # UPDATE DATABASE
         # =================================
 
@@ -2533,7 +2510,8 @@ def process_preprocessing():
                 tokenizing=%s,
                 normalisasi=%s,
                 stopword=%s,
-                stemming=%s
+                stemming=%s,
+                label=%s
             WHERE id=%s
         """, (
             casefolding,
@@ -2542,6 +2520,7 @@ def process_preprocessing():
             normalisasi,
             stopword,
             stemming,
+            label,
             id_data
         ))
 
@@ -2705,7 +2684,8 @@ def split_data():
             '90-10': 0.1,
             '80-20': 0.2,
             '70-30': 0.3,
-            '60-40': 0.4
+            '60-40': 0.4,
+            '50-50': 0.5
         }
         test_size = ratio_map.get(ratio, 0.2)
         session['test_size'] = test_size
@@ -2807,7 +2787,6 @@ def get_split_data():
 
     texts = []
     labels = []
-    lexicons = []
 
     negasi = [
         'tidak',
@@ -2859,12 +2838,6 @@ def get_split_data():
             label
         )
 
-        lexicons.append(
-            get_lexicon_features(
-                clean_text
-            )
-        )
-
     from collections import Counter
 
     label_counts = Counter(labels)
@@ -2886,15 +2859,12 @@ def get_split_data():
         X_train,
         X_test,
         y_train,
-        y_test,
-        lex_train,
-        lex_test
+        y_test
 
     ) = train_test_split(
 
         texts,
         labels,
-        lexicons,
 
         test_size=test_size,
         random_state=42,
@@ -2906,33 +2876,13 @@ def get_split_data():
     print("Train :", len(X_train))
     print("Test  :", len(X_test))
 
-    print(
-        "Lex Train Shape :",
-        np.array(lex_train).shape
-    )
-
-    print(
-        "Lex Test Shape :",
-        np.array(lex_test).shape
-    )
-
     return (
 
         X_train,
         X_test,
 
         y_train,
-        y_test,
-
-        np.array(
-            lex_train,
-            dtype=np.float64
-        ),
-
-        np.array(
-            lex_test,
-            dtype=np.float64
-        )
+        y_test
 
     )
 
@@ -3004,9 +2954,7 @@ def get_vectorizer():
 # =========================================
 
 def train_model():
-    # Sediakan tempat untuk menampung 6 nilai dari get_split_data()
-    # Kita gunakan _ (underscore) untuk mengabaikan nilai lex_train dan lex_test jika tidak digunakan di sini
-    X_train, X_test, y_train, y_test, _, _ = get_split_data()
+    X_train, X_test, y_train, y_test = get_split_data()
 
     vectorizer = get_vectorizer()
 
@@ -3037,17 +2985,17 @@ def predict(tokens):
     text_lower = text_string.lower()
 
     try:
-        # 2. Ambil seluruh data latih (Termasuk matriks leksikon bawaan dari database)
-        session['test_size'] = 0.1
-        X_train, X_test, y_train, y_test, lex_train, lex_test = get_split_data()
-        
+        # 2. Ambil seluruh data latih. Gunakan rasio split pilihan user
+        #    (jangan menimpanya) agar konsisten dengan halaman split-data.
+        X_train, X_test, y_train, y_test = get_split_data()
+
         # 3. Bangun kembali vectorizer TF-IDF murni dari data latih
         vectorizer = get_vectorizer()
         X_train_tfidf = vectorizer.fit_transform(X_train)
-        
+
         # Transformasi teks input user ke TF-IDF
         user_tfidf = vectorizer.transform([text_string])
-        
+
     except Exception as e:
         print("Error get_split_data / TF-IDF:", str(e))
         return {
@@ -3055,49 +3003,22 @@ def predict(tokens):
             "scores": {}
         }
 
-    # 4. AMBIL FITUR TAMBAHAN DARI KAMUS LEKSIKON BARU (YANG SUDAH ADA KATA BODOH)
-    # user_lex_raw menghasilkan list: [skor_positif, skor_negatif]
-    user_lex_raw = get_lexicon_features(text_string)
-    user_lexicon = np.array([user_lex_raw])
-
-    # 5. GABUNGKAN TF-IDF DENGAN LEKSIKON MENGGUNAKAN HSTACK (Sesuai Arsitektur Hybrid Anda)
-    from scipy.sparse import hstack
-    X_train_combined = hstack([X_train_tfidf, lex_train])
-    X_user_combined = hstack([user_tfidf, user_lexicon])
-
-    # 6. Bangun model Naive Bayes dengan setelan Uniform Prior (fit_prior=False)
+    # 4. Bangun model Naive Bayes dengan setelan Uniform Prior (fit_prior=False)
+    #    Fitur murni TF-IDF. Kamus lexicon hanya dipakai pada pelabelan awal,
+    #    bukan lagi sebagai fitur tambahan pada klasifikasi.
     model = MultinomialNB(fit_prior=False)
-    model.fit(X_train_combined, y_train)
+    model.fit(X_train_tfidf, y_train)
 
-    # 7. Ekstrak Prediksi Akhir dan Probabilitas Dasar
-    probabilities = model.predict_proba(X_user_combined)[0]
+    # 5. Ekstrak Prediksi Akhir dan Probabilitas Dasar
+    probabilities = model.predict_proba(user_tfidf)[0]
 
-    # 8. Petakan skor berdasarkan urutan alfabet kelas model secara aman
+    # 6. Petakan skor berdasarkan urutan alfabet kelas model secara aman
     classes = model.classes_
     scores = {}
     for i, label in enumerate(classes):
         scores[label.lower()] = probabilities[i] * 100
 
-    # ====================================================================
-    # 9. KUNCI BIJAKSANA: FORCE HYBRID INTEGRATION & INTERVENSI KATA
-    # Jika secara hitungan Kamus Leksikon murni kata negatif LEBIH BESAR dari positif 
-    # (Misal: kata "bodoh" menyumbang nilai neg_score > 0), 
-    # ATAU terdapat frasa manual "kurang bagus", MAKA paksa dominasi kelas Negatif.
-    # ====================================================================
-    pos_lex_score = user_lex_raw[0]
-    neg_lex_score = user_lex_raw[1]
-
-    if neg_lex_score > pos_lex_score or "kurang bagus" in text_lower or "keluar sendiri" in text_lower or "bodoh" in text_lower:
-        # Ambil nilai probabilitas tertinggi di dalam array agar grafik visualnya mantap
-        max_score = max(scores.values())
-        
-        # Siasati pembagian skor: Pastikan kelas negatif dominan (Minimal 75% ke atas)
-        scores['negatif'] = max(max_score, 75.0)
-        scores['positif'] = min(scores['positif'], 100.0 - scores['negatif'] - 5.0)
-        if 'netral' in scores:
-            scores['netral'] = max(0.0, 100.0 - scores['positif'] - scores['negatif'])
-
-    # 10. Ambil keputusan label akhir dari dictionary skor yang sudah disesuaikan
+    # 7. Ambil keputusan label akhir dari dictionary skor
     predicted_label = max(scores, key=scores.get).capitalize()
 
     # Pembulatan desimal akhir untuk keperluan render chart/bar di halaman web
@@ -3398,14 +3319,10 @@ def get_tfidf_model(force_retrain=False):
         X_train_tfidf = X_train_raw
         X_test_tfidf = X_test_raw
 
-    # 6. Buat array penambal fitur leksikon berisi angka murni (float64) secara manual
-    # berjumlah 2 kolom sesuai dengan kebutuhan dimensi model Anda (1755 + 2 = 1757)
-    lex_train_shifted = np.full((num_samples_train, 2), 5.0, dtype=np.float64)
-    lex_test_shifted = np.full((num_samples_test, 2), 5.0, dtype=np.float64)
-
-    # 7. GABUNGKAN MATRIKS: Menggabungkan matriks TF-IDF dan matriks Leksikon buatan murni float64
-    X_train_combined = sp.hstack((X_train_tfidf, lex_train_shifted), format='csr')
-    X_test_combined = sp.hstack((X_test_tfidf, lex_test_shifted), format='csr')
+    # 6. Fitur murni TF-IDF (lexicon tidak lagi digabungkan sebagai fitur model;
+    #    kamus lexicon hanya dipakai pada pelabelan awal).
+    X_train_combined = sp.csr_matrix(X_train_tfidf)
+    X_test_combined = sp.csr_matrix(X_test_tfidf)
 
     # ==========================================
     # PROSES OVERSAMPLING SMOTE & TRAINING MODEL
@@ -3530,12 +3447,9 @@ def build_posterior_detail(text):
     # 2. Ambil bobot TF-IDF awal dalam bentuk sparse
     vec_tfidf_raw = vectorizer.transform([joined])
 
-    # === DETEKSI JUMLAH FITUR SEBENARNYA DARI ESTIMATOR MODEL NB ===
+    # === JUMLAH FITUR MODEL (MURNI TF-IDF) ===
     total_features_expected = model.feature_log_prob_.shape[1]
     total_tfidf_features = len(feature_names)
-    
-    # Hitung berapa jumlah fitur leksikon tambahan yang ditraining di model (bisa 1 atau 2)
-    jumlah_fitur_leksikon = total_features_expected - total_tfidf_features
 
     # Buat array NumPy biasa berukuran TEPAT sama dengan yang diminta model
     dense_input = np.zeros((1, total_features_expected))
@@ -3544,18 +3458,6 @@ def build_posterior_detail(text):
     for idx, weight in zip(vec_tfidf_raw.indices, vec_tfidf_raw.data):
         if idx < total_tfidf_features:
             dense_input[0, idx] = weight
-
-    # 3. Hitung fitur skor leksikon untuk teks tunggal ini
-    lex_score = get_lexicon_features(joined)
-    
-    # Normalisasi format lex_score (jika berbentuk list, float, dsb.)
-    if isinstance(lex_score, list):
-        lex_list = [float(x) for x in lex_score]
-    elif isinstance(lex_score, tuple):
-        lex_list = [float(x) for x in list(lex_score)]
-    else:
-        # Jika single value, buat list berisi nilai tersebut
-        lex_list = [float(lex_score)]
 
     detail_rows = []
 
@@ -3571,55 +3473,7 @@ def build_posterior_detail(text):
                 'lh_neg': float(lh_neg_all[idx])
             })
 
-    # 4. KUNCI UTAMA SINKRONISASI: Petakan Leksikon Berdasarkan Jumlah Dimensinya (1 atau 2)
-    if jumlah_fitur_leksikon == 2:
-        # Mengambil nilai Dim-1 dan Dim-2 (Pastikan urutan indeksnya sesuai dengan fungsi training admin Anda)
-        val_dim1 = lex_list[0] if len(lex_list) > 0 else 0.0
-        val_dim2 = lex_list[1] if len(lex_list) > 1 else (lex_list[0] if len(lex_list) > 0 else 0.0)
-
-        # Geser dengan Shifter +5
-        lex_shifted_dim1 = val_dim1 + 5.0
-        lex_shifted_dim2 = val_dim2 + 5.0
-
-        idx_dim1 = total_tfidf_features      # Indeks setelah kata TF-IDF habis
-        idx_dim2 = total_tfidf_features + 1  # Indeks paling ujung akhir
-
-        # Inject nilai ke array utama pendukung model
-        dense_input[0, idx_dim1] = lex_shifted_dim1
-        dense_input[0, idx_dim2] = lex_shifted_dim2
-
-        # Tambahkan ke rows visualisasi tabel
-        detail_rows.append({
-            'word': '[Fitur Leksikon InSet Dim-1 (+5 Shifted)]',
-            'weight': float(lex_shifted_dim1),
-            'lh_pos': float(lh_pos_all[idx_dim1]),
-            'lh_net': float(lh_net_all[idx_dim1]),
-            'lh_neg': float(lh_neg_all[idx_dim1])
-        })
-        detail_rows.append({
-            'word': '[Fitur Leksikon InSet Dim-2 (+5 Shifted)]',
-            'weight': float(lex_shifted_dim2),
-            'lh_pos': float(lh_pos_all[idx_dim2]),
-            'lh_net': float(lh_net_all[idx_dim2]),
-            'lh_neg': float(lh_neg_all[idx_dim2])
-        })
-    else:
-        # Kondisi fallback jika model hanya ditraining pakai 1 Dimensi Leksikon saja
-        val_single = lex_list[0] if len(lex_list) > 0 else 0.0
-        lex_shifted_single = val_single + 5.0
-        idx_single = total_tfidf_features
-
-        dense_input[0, idx_single] = lex_shifted_single
-
-        detail_rows.append({
-            'word': '[Fitur Leksikon InSet (+5 Shifted)]',
-            'weight': float(lex_shifted_single),
-            'lh_pos': float(lh_pos_all[idx_single]),
-            'lh_net': float(lh_net_all[idx_single]),
-            'lh_neg': float(lh_neg_all[idx_single])
-        })
-
-    # 5. Ubah menjadi format CSR Sparse & Klasifikasikan
+    # 3. Ubah menjadi format CSR Sparse & Klasifikasikan
     vec_combined = sp.csr_matrix(dense_input)
     proba = model.predict_proba(vec_combined)[0]
     pred = model.predict(vec_combined)[0]
@@ -3921,27 +3775,13 @@ def posterior_view():
         tokens = preprocess_text(text)
         joined = " ".join(tokens)
 
-        # 1. Transformasi teks menjadi fitur TF-IDF (1755 fitur)
+        # 1. Transformasi teks menjadi fitur TF-IDF (murni)
         vec_tfidf = vectorizer.transform([joined])
 
-        # 2. Hitung Fitur Leksikon InSet tunggal
-        lex_score_data = get_lexicon_features(joined)
-        
-        if isinstance(lex_score_data, list):
-            lex_array = np.array([lex_score_data])
-        else:
-            lex_array = np.array([[lex_score_data]])
-
-        # Terapkan Shift +5 untuk semua elemen di dalam array leksikon
-        lex_score_shifted = lex_array + 5
-
-        # 3. Gabungkan TF-IDF dan Fitur Leksikon (Total menjadi 1757 fitur)
-        vec_combined = sp.hstack((vec_tfidf, lex_score_shifted), format='csr')
-
-        # 4. Gunakan matriks gabungan untuk memprediksi probabilitas (Menggunakan model SMOTE terpadu)
-        proba = model.predict_proba(vec_combined)[0]
-        pred = model.predict(vec_combined)[0]
-        jll = model._joint_log_likelihood(vec_combined)[0]
+        # 2. Prediksi probabilitas langsung dari fitur TF-IDF
+        proba = model.predict_proba(vec_tfidf)[0]
+        pred = model.predict(vec_tfidf)[0]
+        jll = model._joint_log_likelihood(vec_tfidf)[0]
 
         predicted = pred
 
@@ -3953,24 +3793,6 @@ def posterior_view():
                 'lh_pos': float(lh_pos_all[idx]),
                 'lh_net': float(lh_net_all[idx]),
                 'lh_neg': float(lh_neg_all[idx])
-            })
-
-        # =====================================================================
-        # PERBAIKAN: PEMETAAN INDEKS FITUR LEKSIKON YANG SEBENARNYA (1756 & 1757)
-        # =====================================================================
-        num_tfidf_features = len(feature_names) # Pasti 1755
-        num_lex_features = lex_score_shifted.shape[1] # Pasti 2
-        
-        for offset_idx in range(num_lex_features):
-            # Indeks sebenarnya di dalam matriks model NB adalah kelanjutan dari TF-IDF
-            lexicon_idx = num_tfidf_features + offset_idx 
-            
-            detail_rows.append({
-                'word': f'[Fitur Leksikon InSet Dim-{offset_idx+1} (+5 Shifted)]',
-                'weight': float(lex_score_shifted[0][offset_idx]),
-                'lh_pos': float(lh_pos_all[lexicon_idx]),
-                'lh_net': float(lh_net_all[lexicon_idx]),
-                'lh_neg': float(lh_neg_all[lexicon_idx])
             })
 
         detail_rows.sort(key=lambda r: r['weight'], reverse=True)
@@ -4016,9 +3838,7 @@ def prediction():
             X_train,
             X_test,
             y_train,
-            y_test,
-            lex_train,
-            lex_test
+            y_test
         ) = get_split_data()
 
     except DataNotReadyError as e:
@@ -4042,26 +3862,15 @@ def prediction():
     )
 
     # =====================================
-    # GABUNGKAN FITUR TF-IDF DAN LEXICON INSET
+    # FITUR MURNI TF-IDF
     # =====================================
     # Fitur TF-IDF digunakan untuk merepresentasikan
-    # bobot kata pada ulasan, sedangkan fitur Lexicon
-    # InSet digunakan untuk menambahkan informasi skor
-    # sentimen positif dan negatif dari setiap ulasan.
-    # Kedua fitur digabungkan agar model memiliki
-    # representasi teks yang lebih informatif.
+    # bobot kata pada ulasan. Kamus Lexicon InSet tidak
+    # lagi digabungkan sebagai fitur model; lexicon hanya
+    # dipakai pada tahap pelabelan awal.
 
-    from scipy.sparse import hstack
-
-    X_train_combined = hstack([
-        X_train_tfidf,
-        lex_train
-    ])
-
-    X_test_combined = hstack([
-        X_test_tfidf,
-        lex_test
-    ])
+    X_train_combined = X_train_tfidf
+    X_test_combined = X_test_tfidf
 
     # =====================================
     # SMOTE (Synthetic Minority Oversampling Technique)
@@ -4082,8 +3891,8 @@ def prediction():
     # PELATIHAN MODEL MULTINOMIAL NAÏVE BAYES
     # =====================================
     # Model dilatih menggunakan data training yang
-    # telah melalui proses TF-IDF, Lexicon InSet,
-    # dan penyeimbangan kelas menggunakan SMOTE.
+    # telah melalui proses TF-IDF dan penyeimbangan
+    # kelas menggunakan SMOTE.
 
     model = MultinomialNB()
 
@@ -4096,8 +3905,7 @@ def prediction():
     # PREDIKSI DATA TESTING
     # =====================================
     # Model melakukan prediksi terhadap data testing
-    # yang telah direpresentasikan menggunakan gabungan
-    # fitur TF-IDF dan Lexicon InSet.
+    # yang telah direpresentasikan menggunakan fitur TF-IDF.
 
     predictions = model.predict(
         X_test_combined
@@ -4225,7 +4033,7 @@ def public_tfidf():
         return render_template('public/classification/tfidf.html', not_ready=True)
 
     vectorizer = bundle['vectorizer']
-    X_train_raw, _, _, _, _, _ = get_split_data()
+    X_train_raw, _, _, _ = get_split_data()
     X_train_tfidf = vectorizer.transform(X_train_raw)
     feature_names = bundle['feature_names']
 
@@ -4262,7 +4070,7 @@ def public_prior():
             not_ready=True
         )
 
-    X_train_raw, _, y_train, _, _, _ = get_split_data()
+    X_train_raw, _, y_train, _ = get_split_data()
 
     counts = Counter(y_train)
     total = len(y_train)
@@ -4379,7 +4187,7 @@ def public_prediction():
     X_test_combined = bundle['X_test_combined']
     y_test = bundle['y_test']
     
-    _, X_test_raw, _, _, _, _ = get_split_data()
+    _, X_test_raw, _, _ = get_split_data()
     predictions = model.predict(X_test_combined)
 
     results = []
@@ -4577,4 +4385,6 @@ for rule in app.url_map.iter_rules():
     print(rule)
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    # Port 5001 dipakai untuk menghindari bentrok dengan macOS AirPlay
+    # Receiver yang menempati port 5000 (mengembalikan 403).
+    app.run(debug=True, port=5001)
