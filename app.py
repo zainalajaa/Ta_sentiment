@@ -2967,6 +2967,7 @@ def train_model():
         y_train
     )
 
+
     return model, vectorizer
 
 
@@ -3333,6 +3334,34 @@ def get_tfidf_model(force_retrain=False):
 
     model = MultinomialNB()
     model.fit(X_train_resampled, y_train_resampled)
+
+    print("\n========== FEATURE COUNT PER KELAS ==========")
+
+    # feature_names masih berupa list
+    if hasattr(vectorizer, "get_feature_names_out"):
+        feature_names = vectorizer.get_feature_names_out().tolist()
+    else:
+        feature_names = []
+
+    kata_dicari = ["aplikasi", "bantu", "proses", "kuliah"]
+
+    for idx_kelas, kelas in enumerate(model.classes_):
+
+        print(f"\nKELAS : {kelas}")
+
+        for kata in kata_dicari:
+
+            if kata in feature_names:
+
+                idx = feature_names.index(kata)
+
+                print(
+                    f"{kata:10s} = {model.feature_count_[idx_kelas][idx]:.6f}"
+                )
+
+            else:
+
+                print(f"{kata:10s} = TIDAK ADA")
 
     # ==========================================
     # TOTAL BOBOT FITUR SETIAP KELAS
